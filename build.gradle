@@ -1,4 +1,4 @@
-// The PC facade is responsible for the primary distribution - a plain Java application runnable on PCs
+// The AWT facade offers a 2D alternative view of Terasology (on PCs)
 
 // Grab all the common stuff like plugins to use, artifact repositories, code analysis config
 apply from: "$rootDir/config/gradle/common.gradle"
@@ -10,11 +10,8 @@ def dateTimeFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX")
 dateTimeFormat.timeZone = TimeZone.getTimeZone("UTC")
 
 ext {
-    // Default path to store server data if running headless via Gradle
-    localServerDataPath = 'terasology-server'
-
     // General props
-    mainClassName = 'org.terasology.engine.Terasology'
+    mainClassName = 'org.terasology.engine.TerasologyAwt'
     subDirLibs = 'libs'
     templatesDir = new File(rootDir, 'templates')
     rootDirDist = new File(rootDir, 'build/distributions')
@@ -43,7 +40,7 @@ sourceSets {
     }
 }
 
-// Instructions for packaging a jar file for the PC facade
+// Instructions for packaging a jar file for the AWT facade
 jar {
     manifest {
         //TODO: Maybe later add the engine's version number into here?
@@ -55,7 +52,7 @@ jar {
 task awt(type:JavaExec) {
     description = "Run 'Terasology' to play the game as an awt application"
 
-    // Dependencies: natives + all modules & the PC facade itself (which will trigger the engine)
+    // Dependencies: natives + all modules & the AWT facade itself (which will trigger the engine)
     dependsOn rootProject.extractNatives
     dependsOn rootProject.moduleClasses
     dependsOn classes
@@ -66,13 +63,13 @@ task awt(type:JavaExec) {
     String[] runArgs = ["-homedir"]
     args runArgs
 
-    // Classpath: PC itself, engine classes, engine dependencies. Not modules or natives since the engine finds those
+    // Classpath: AWT itself, engine classes, engine dependencies. Not modules or natives since the engine finds those
     classpath sourceSets.main.output.classesDir
     classpath project(':engine').sourceSets.main.output.classesDir
     classpath project(':engine').configurations.runtime
 }
 
-// Preps a version file to bundle with PC dists. This eventually goes into the root of a zip file
+// Preps a version file to bundle with AWT dists. This eventually goes into the root of a zip file
 task createVersionFile(type: Copy) {
     inputs.property('dateTime', startDateTimeString)
     onlyIf { env.BUILD_URL != null }
@@ -174,7 +171,7 @@ task distModules (type: Sync) {
 
 task distAppZip (type: Zip) {
     from "$distsDir/app"
-    baseName = "Terasology"
+    baseName = "TerasologyAWT"
 }
 
 task distForLauncher (type: Sync) {
@@ -199,10 +196,57 @@ idea {
     }
 }
 
+// Note the use of rootProject.idea as the .iws is only available there
+rootProject.idea {
+
+    // Generate a run configuration for the this facade's AWT way of running the game
+    workspace.iws.withXml { xmlProvider ->
+
+        def runManager = xmlProvider.asNode().find { it.@name == 'RunManager' }
+        runManager.append(new XmlParser().parseText('''
+                <configuration default="false" name="TerasologyAWT" type="Application" factoryName="Application">
+                  <extension name="coverage" enabled="false" merge="false" runner="idea">
+                    <pattern>
+                      <option name="PATTERN" value="org.terasology.engine.*"/>
+                      <option name="ENABLED" value="true"/>
+                    </pattern>
+                  </extension>
+                  <option name="MAIN_CLASS_NAME" value="org.terasology.engine.TerasologyAwt"/>
+                  <option name="VM_PARAMETERS" value="-Xms256m -Xmx1024m"/>
+                  <option name="PROGRAM_PARAMETERS" value="-homedir"/>
+                  <option name="WORKING_DIRECTORY" value="file://$PROJECT_DIR$"/>
+                  <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="false"/>
+                  <option name="ALTERNATIVE_JRE_PATH" value=""/>
+                  <option name="ENABLE_SWING_INSPECTOR" value="false"/>
+                  <option name="ENV_VARIABLES"/>
+                  <option name="PASS_PARENT_ENVS" value="true"/>
+                  <module name="AWT"/>
+                  <envs/>
+                  <RunnerSettings RunnerId="Debug">
+                    <option name="DEBUG_PORT" value=""/>
+                    <option name="TRANSPORT" value="0"/>
+                    <option name="LOCAL" value="true"/>
+                  </RunnerSettings>
+                  <RunnerSettings RunnerId="Run"/>
+                  <ConfigurationWrapper RunnerId="Debug"/>
+                  <ConfigurationWrapper RunnerId="Run"/>
+                  <method/>
+                </configuration>
+            '''))
+
+        // This part puts the added run config into the actual "Run" drop-down
+        runManager.append(new XmlParser().parseText('''
+            <list size="1">
+            <item index="0" class="java.lang.String" itemvalue="Application.TerasologyPC"/>
+            </list>
+            '''))
+    }
+}
+
 task copyEclipseLauncher(type: Copy) {
 	from "$rootDir/config/eclipse"
 	into projectDir
-	include("*.launch")
+	include("TerasologyAWT.launch")
 }
 
 tasks.eclipse {
@@ -211,5 +255,5 @@ tasks.eclipse {
 }
 
 cleanEclipse.doLast {
-    new File(projectDir, "Terasology.launch").delete()
+    new File(projectDir, "TerasologyAWT.launch").delete()
 }
