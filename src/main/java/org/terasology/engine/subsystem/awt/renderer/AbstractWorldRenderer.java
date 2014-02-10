@@ -15,29 +15,20 @@
  */
 package org.terasology.engine.subsystem.awt.renderer;
 
-import java.awt.Color;
-import java.awt.Graphics;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-import javax.vecmath.Point2i;
 import javax.vecmath.Vector3f;
 
 import org.terasology.audio.AudioManager;
 import org.terasology.config.Config;
 import org.terasology.engine.ComponentSystemManager;
-import org.terasology.engine.subsystem.DisplayDevice;
-import org.terasology.engine.subsystem.awt.cities.Sector;
-import org.terasology.engine.subsystem.awt.cities.Sectors;
-import org.terasology.engine.subsystem.awt.cities.SwingRasterizer;
-import org.terasology.engine.subsystem.awt.devices.AwtDisplayDevice;
 import org.terasology.engine.subsystem.headless.renderer.NullCamera;
 import org.terasology.logic.players.LocalPlayer;
 import org.terasology.logic.players.LocalPlayerSystem;
 import org.terasology.math.AABB;
 import org.terasology.math.Rect2i;
-import org.terasology.math.Vector2i;
 import org.terasology.monitoring.PerformanceMonitor;
 import org.terasology.physics.bullet.BulletPhysics;
 import org.terasology.physics.engine.PhysicsEngine;
@@ -55,7 +46,7 @@ import org.terasology.world.chunks.internal.ChunkImpl;
 
 import com.google.common.collect.Lists;
 
-public class AwtWorldRenderer implements WorldRenderer {
+public abstract class AbstractWorldRenderer implements WorldRenderer {
 
     private static final int MAX_CHUNKS = ViewDistance.ULTRA.getChunkDistance() * ViewDistance.ULTRA.getChunkDistance();
 
@@ -75,7 +66,7 @@ public class AwtWorldRenderer implements WorldRenderer {
 
     private Config config;
 
-    public AwtWorldRenderer(WorldProvider worldProvider, ChunkProvider chunkProvider, LocalPlayerSystem localPlayerSystem) {
+    public AbstractWorldRenderer(WorldProvider worldProvider, ChunkProvider chunkProvider, LocalPlayerSystem localPlayerSystem) {
         this.worldProvider = worldProvider;
         this.chunkProvider = chunkProvider;
         bulletPhysics = new BulletPhysics(worldProvider);
@@ -237,37 +228,7 @@ public class AwtWorldRenderer implements WorldRenderer {
         renderWorld(getActiveCamera());
     }
 
-    public void renderWorld(Camera camera) {
-        AwtDisplayDevice displayDevice = (AwtDisplayDevice) CoreRegistry.get(DisplayDevice.class);
-        Graphics drawGraphics = displayDevice.getDrawGraphics();
-        drawGraphics.setColor(Color.LIGHT_GRAY);
-        int width = displayDevice.mainFrame.getWidth();
-        int height = displayDevice.mainFrame.getHeight();
-        drawGraphics.fillRect(0, 0, width, height);
-
-        int scale = 2;
-
-        final Vector2i cameraPos = new Vector2i(-350, 450);
-
-        int camOffX = (int) Math.floor(cameraPos.x / (double) Sector.SIZE);
-        int camOffZ = (int) Math.floor(cameraPos.y / (double) Sector.SIZE);
-
-        int numX = width / (Sector.SIZE * scale) + 1;
-        int numZ = height / (Sector.SIZE * scale) + 1;
-
-        String seed = "a";
-        SwingRasterizer rasterizer = new SwingRasterizer(seed);
-
-        for (int z = -1; z < numZ; z++) {
-            for (int x = -1; x < numX; x++) {
-                Point2i coord = new Point2i(x - camOffX, z - camOffZ);
-                Sector sector = Sectors.getSector(coord);
-                drawGraphics.setClip(null); // mlk added
-                drawGraphics.setClip((x - camOffX) * Sector.SIZE, (z - camOffZ) * Sector.SIZE, Sector.SIZE, Sector.SIZE);
-                rasterizer.drawAccurately(drawGraphics, sector);
-            }
-        }
-    }
+    public abstract void renderWorld(Camera camera);
 
     @Override
     public void dispose() {

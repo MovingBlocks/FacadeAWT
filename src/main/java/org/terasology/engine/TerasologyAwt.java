@@ -58,7 +58,7 @@ public final class TerasologyAwt {
             }
 
             Collection<EngineSubsystem> subsystemList = Lists.<EngineSubsystem>newArrayList(
-			new AwtGraphics(), new HeadlessTimer(), new HeadlessAudio());
+                    new AwtGraphics(), new HeadlessTimer(), new HeadlessAudio());
 
             TerasologyEngine engine = new TerasologyEngine(subsystemList);
             engine.init();
