@@ -115,7 +115,7 @@ public class WorldControlSystem implements ComponentSystem {
     @ReceiveEvent(components = {ClientComponent.class})
     public void onScrollLeftButton(ScrollLeftButton event, EntityRef entity) {
         if (event.isDown()) {
-            renderer.changeCameraOffsetBy(1, 0, 0);
+            renderer.changeCameraOffsetBy(0, 0, -1);
 
             event.consume();
         }
@@ -124,7 +124,7 @@ public class WorldControlSystem implements ComponentSystem {
     @ReceiveEvent(components = {ClientComponent.class})
     public void onScrollRightButton(ScrollRightButton event, EntityRef entity) {
         if (event.isDown()) {
-            renderer.changeCameraOffsetBy(-1, 0, 0);
+            renderer.changeCameraOffsetBy(0, 0, 1);
 
             event.consume();
         }
@@ -151,7 +151,7 @@ public class WorldControlSystem implements ComponentSystem {
     @ReceiveEvent(components = {ClientComponent.class})
     public void onScrollForwardButton(ScrollForwardButton event, EntityRef entity) {
         if (event.isDown()) {
-            renderer.changeCameraOffsetBy(0, 0, -1);
+            renderer.changeCameraOffsetBy(1, 0, 0);
 
             event.consume();
         }
@@ -160,7 +160,7 @@ public class WorldControlSystem implements ComponentSystem {
     @ReceiveEvent(components = {ClientComponent.class})
     public void onScrollForwardButton(ScrollBackwardButton event, EntityRef entity) {
         if (event.isDown()) {
-            renderer.changeCameraOffsetBy(0, 0, 1);
+            renderer.changeCameraOffsetBy(-1, 0, 0);
 
             event.consume();
         }

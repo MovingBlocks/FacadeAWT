@@ -176,14 +176,14 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
         Vector3i offsetPosition;
         int offset = viewingAxisOffset;
         switch (displayAxisType) {
-            case XY_AXIS:
-                offsetPosition = new Vector3i(0, 0, offset);
-                break;
             case XZ_AXIS:
                 offsetPosition = new Vector3i(0, offset, 0);
                 break;
             case YZ_AXIS:
                 offsetPosition = new Vector3i(offset, 0, 0);
+                break;
+            case XY_AXIS:
+                offsetPosition = new Vector3i(0, 0, offset);
                 break;
             default:
                 throw new RuntimeException("illegal displayAxisType " + displayAxisType);
@@ -191,14 +191,14 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
 
         Vector3i behindLocationChange;
         switch (displayAxisType) {
-            case XY_AXIS:
-                behindLocationChange = new Vector3i(0, 0, -1);
-                break;
             case XZ_AXIS:
                 behindLocationChange = new Vector3i(0, -1, 0);
                 break;
             case YZ_AXIS:
-                behindLocationChange = new Vector3i(-1, 0, 0);
+                behindLocationChange = new Vector3i(1, 0, 0);
+                break;
+            case XY_AXIS:
+                behindLocationChange = new Vector3i(0, 0, 1);
                 break;
             default:
                 throw new RuntimeException("illegal displayAxisType " + displayAxisType);
@@ -210,11 +210,11 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
             case XZ_AXIS: // top down view
                 blockPart = BlockPart.TOP;
                 break;
-            case XY_AXIS:
-                blockPart = BlockPart.FRONT; // todo: front/left/right/back needs to be picked base on viewpoint
-                break;
             case YZ_AXIS:
                 blockPart = BlockPart.LEFT; // todo: front/left/right/back needs to be picked base on viewpoint
+                break;
+            case XY_AXIS:
+                blockPart = BlockPart.FRONT; // todo: front/left/right/back needs to be picked base on viewpoint
                 break;
             default:
                 throw new RuntimeException("displayAxisType containts invalid value");
@@ -232,11 +232,11 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
                     case XZ_AXIS: // top down view
                         relativeLocation = new Vector3i(-relativeCellLocation.x, 0, relativeCellLocation.y);
                         break;
+                    case YZ_AXIS:
+                        relativeLocation = new Vector3i(0, -relativeCellLocation.x, relativeCellLocation.y);
+                        break;
                     case XY_AXIS:
                         relativeLocation = new Vector3i(-relativeCellLocation.y, -relativeCellLocation.x, 0);
-                        break;
-                    case YZ_AXIS:
-                        relativeLocation = new Vector3i(0, -relativeCellLocation.x, -relativeCellLocation.y);
                         break;
                     default:
                         throw new RuntimeException("displayAxisType containts invalid value");
