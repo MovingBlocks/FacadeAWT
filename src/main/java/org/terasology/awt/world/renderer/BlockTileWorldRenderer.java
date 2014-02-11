@@ -78,6 +78,9 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
     // Pixels per block
     private float zoomLevel = 16;
 
+    int depthsOfTransparency = 8;
+    private float[] darken;
+
     public BlockTileWorldRenderer(WorldProvider worldProvider, ChunkProvider chunkProvider, LocalPlayerSystem localPlayerSystem) {
         super(worldProvider, chunkProvider, localPlayerSystem);
 
@@ -85,6 +88,16 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
 
         ComponentSystemManager componentSystemManager = CoreRegistry.get(ComponentSystemManager.class);
         componentSystemManager.register(new WorldControlSystem(this), "awt:WorldControlSystem");
+
+        float[] hsbvals = new float[3];
+        java.awt.Color.RGBtoHSB(255, 255, 255, hsbvals);
+
+        darken = new float[depthsOfTransparency];
+        darken[0] = 1f;
+
+        for (int i = 1; i < depthsOfTransparency; i++) {
+            darken[i] = (depthsOfTransparency - i) / ((float)depthsOfTransparency);
+        }
     }
 
     public void renderWorld(Camera camera) {
@@ -132,6 +145,9 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
         Graphics drawGraphics = displayDevice.getDrawGraphics();
         int width = displayDevice.mainFrame.getWidth();
         int height = displayDevice.mainFrame.getHeight();
+
+        drawGraphics.setColor(java.awt.Color.BLACK);
+        drawGraphics.fillRect(0, 0, width, height);
 
         int blockTileWidth = (int) zoomLevel;
         int blockTileHeight = (int) zoomLevel;
@@ -188,7 +204,6 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
                 throw new RuntimeException("illegal displayAxisType " + displayAxisType);
         }
 
-
         // TODO: If we base it on viewpoint, this probably needs to go inside the loop
         BlockPart blockPart;
         switch (displayAxisType) {
@@ -232,14 +247,18 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
                 if (null != block) {
 
                     int alphaChangeCounter = 0;
-                    Color colorAdjustment = Color.WHITE;
-                    while (BlockManager.getAir().equals(block) && alphaChangeCounter < 4) {
+                    float alpha = 1f;
+                    while (BlockManager.getAir().equals(block) && (alphaChangeCounter < (depthsOfTransparency-1))) {
                         alphaChangeCounter++;
-                        colorAdjustment = Color.WHITE.alterAlpha(64 * (4 - alphaChangeCounter));
+                        alpha = darken[alphaChangeCounter];
                         relativeLocation.add(behindLocationChange);
                         block = getBlockAtWorldPosition(worldProvider, relativeLocation);
                     }
-                    
+                    if (BlockManager.getAir().equals(block)) {
+                        // let it remain black
+                        continue;
+                    }
+
                     BlockUri blockUri = block.getURI();
                     BlockAppearance primaryAppearance = block.getPrimaryAppearance();
 
@@ -258,7 +277,7 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
                     Texture texture = textureRegion.getTexture();
                     AwtTexture awtTexture = (AwtTexture) texture;
 
-                    BufferedImage bufferedImage = awtTexture.getBufferedImage(texture.getWidth(), texture.getHeight(), 1f, colorAdjustment);
+                    BufferedImage bufferedImage = awtTexture.getBufferedImage(texture.getWidth(), texture.getHeight(), alpha, Color.WHITE);
 
                     Rect2i pixelRegion = textureRegion.getPixelRegion();
 
@@ -281,9 +300,6 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
                     ImageObserver observer = null;
 
                     drawGraphics.drawImage(bufferedImage, dx1, dy1, dx2, dy2, sx1, sy1, sx2, sy2, observer);
-                } else {
-                    drawGraphics.setColor(java.awt.Color.BLACK);
-                    drawGraphics.fillRect(i * blockTileWidth, j * blockTileHeight, blockTileWidth, blockTileHeight);
                 }
             }
         }
