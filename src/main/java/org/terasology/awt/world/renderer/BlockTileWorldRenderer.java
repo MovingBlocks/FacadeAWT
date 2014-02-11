@@ -51,6 +51,7 @@ import org.terasology.rendering.nui.Color;
 import org.terasology.world.WorldProvider;
 import org.terasology.world.block.Block;
 import org.terasology.world.block.BlockAppearance;
+import org.terasology.world.block.BlockManager;
 import org.terasology.world.block.BlockPart;
 import org.terasology.world.block.BlockUri;
 import org.terasology.world.block.loader.WorldAtlas;
@@ -172,6 +173,22 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
                 throw new RuntimeException("illegal displayAxisType " + displayAxisType);
         }
 
+        Vector3i behindLocationChange;
+        switch (displayAxisType) {
+            case XY_AXIS:
+                behindLocationChange = new Vector3i(0, 0, -1);
+                break;
+            case XZ_AXIS:
+                behindLocationChange = new Vector3i(0, -1, 0);
+                break;
+            case YZ_AXIS:
+                behindLocationChange = new Vector3i(-1, 0, 0);
+                break;
+            default:
+                throw new RuntimeException("illegal displayAxisType " + displayAxisType);
+        }
+
+
         // TODO: If we base it on viewpoint, this probably needs to go inside the loop
         BlockPart blockPart;
         switch (displayAxisType) {
@@ -214,6 +231,15 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
                 Block block = getBlockAtWorldPosition(worldProvider, relativeLocation);
                 if (null != block) {
 
+                    int alphaChangeCounter = 0;
+                    Color colorAdjustment = Color.WHITE;
+                    while (BlockManager.getAir().equals(block) && alphaChangeCounter < 4) {
+                        alphaChangeCounter++;
+                        colorAdjustment = Color.WHITE.alterAlpha(64 * (4 - alphaChangeCounter));
+                        relativeLocation.add(behindLocationChange);
+                        block = getBlockAtWorldPosition(worldProvider, relativeLocation);
+                    }
+                    
                     BlockUri blockUri = block.getURI();
                     BlockAppearance primaryAppearance = block.getPrimaryAppearance();
 
@@ -232,7 +258,7 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
                     Texture texture = textureRegion.getTexture();
                     AwtTexture awtTexture = (AwtTexture) texture;
 
-                    BufferedImage bufferedImage = awtTexture.getBufferedImage(texture.getWidth(), texture.getHeight(), 1f, Color.WHITE);
+                    BufferedImage bufferedImage = awtTexture.getBufferedImage(texture.getWidth(), texture.getHeight(), 1f, colorAdjustment);
 
                     Rect2i pixelRegion = textureRegion.getPixelRegion();
 
