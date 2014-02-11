@@ -15,7 +15,12 @@
  */
 package org.terasology.engine;
 
-import com.google.common.collect.Lists;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Collection;
+
+import javax.swing.JOptionPane;
+
 import org.terasology.engine.modes.StateMainMenu;
 import org.terasology.engine.paths.PathManager;
 import org.terasology.engine.subsystem.EngineSubsystem;
@@ -23,10 +28,7 @@ import org.terasology.engine.subsystem.awt.AwtGraphics;
 import org.terasology.engine.subsystem.headless.HeadlessAudio;
 import org.terasology.engine.subsystem.headless.HeadlessTimer;
 
-import javax.swing.*;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Collection;
+import com.google.common.collect.Lists;
 
 /**
  * Main method for launching Terasology

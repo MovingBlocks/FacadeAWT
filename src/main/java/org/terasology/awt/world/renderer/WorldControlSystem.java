@@ -1,12 +1,9 @@
-
 package org.terasology.awt.world.renderer;
 
 import java.lang.annotation.Annotation;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.terasology.awt.input.binds.DecreaseOffsetButton;
-import org.terasology.awt.input.binds.IncreaseOffsetButton;
 import org.terasology.awt.input.binds.ScrollBackwardButton;
 import org.terasology.awt.input.binds.ScrollDownButton;
 import org.terasology.awt.input.binds.ScrollForwardButton;
@@ -14,6 +11,8 @@ import org.terasology.awt.input.binds.ScrollLeftButton;
 import org.terasology.awt.input.binds.ScrollRightButton;
 import org.terasology.awt.input.binds.ScrollUpButton;
 import org.terasology.awt.input.binds.ToggleMapAxisButton;
+import org.terasology.awt.input.binds.ZoomInButton;
+import org.terasology.awt.input.binds.ZoomOutButton;
 import org.terasology.engine.SimpleUri;
 import org.terasology.entitySystem.entity.EntityRef;
 import org.terasology.entitySystem.event.ReceiveEvent;
@@ -30,82 +29,22 @@ import org.terasology.network.ClientComponent;
 import org.terasology.registry.CoreRegistry;
 
 public class WorldControlSystem implements ComponentSystem {
-    public final class MyRegisterBindButton implements RegisterBindButton {
-        @Override
-        public Class<? extends Annotation> annotationType() {
-            // TODO Auto-generated method stub
-            return null;
-        }
-
-        @Override
-        public boolean repeating() {
-            return false;
-        }
-
-        @Override
-        public ActivateMode mode() {
-            return ActivateMode.BOTH;
-        }
-
-        @Override
-        public String id() {
-            return "changeMapAxis";
-        }
-
-        @Override
-        public String description() {
-            return "Change Map Axis";
-        }
-
-        @Override
-        public String category() {
-            return null;
-        }
-    }
-
-    public final class MyInput implements Input {
-        int id;
-        
-        public MyInput(int id) {
-            this.id = id;
-        }
-        
-        @Override
-        public InputType getType() {
-            return InputType.KEY;
-        }
-
-        @Override
-        public String getName() {
-            return "don't care";
-        }
-
-        @Override
-        public int getId() {
-            return id;
-        }
-
-        @Override
-        public String getDisplayName() {
-            return "don't care";
-        }
-    }
 
     private static final Logger logger = LoggerFactory.getLogger(WorldControlSystem.class);
 
     private BlockTileWorldRenderer renderer;
-    
+
     public WorldControlSystem(BlockTileWorldRenderer renderer) {
         this.renderer = renderer;
-        
+
         InputSystem inputSystem = CoreRegistry.get(InputSystem.class);
         RegisterBindButton info = new MyRegisterBindButton();
 
         Input input = new MyInput(Keyboard.KeyId.NUMPAD_MINUS);
-        manuallyBindKey(info, input, inputSystem, new DecreaseOffsetButton());
+        manuallyBindKey(info, input, inputSystem, new ZoomOutButton());
 
         input = new MyInput(Keyboard.KeyId.NUMPAD_PLUS);
-        manuallyBindKey(info, input, inputSystem, new IncreaseOffsetButton());
+        manuallyBindKey(info, input, inputSystem, new ZoomInButton());
 
         input = new MyInput(Keyboard.KeyId.NUMPAD_0);
         manuallyBindKey(info, input, inputSystem, new ToggleMapAxisButton());
@@ -144,21 +83,21 @@ public class WorldControlSystem implements ComponentSystem {
 
     @Override
     public void shutdown() {
-   }
+    }
 
     @ReceiveEvent(components = {ClientComponent.class})
-    public void onIncreaseOffsetButton(IncreaseOffsetButton event, EntityRef entity) {
+    public void onIncreaseOffsetButton(ZoomInButton event, EntityRef entity) {
         if (event.isDown()) {
-            renderer.increaseViewingAxisOffset();
+            renderer.zoomIn();
 
             event.consume();
         }
     }
 
     @ReceiveEvent(components = {ClientComponent.class})
-    public void onDecreaseOffsetButton(DecreaseOffsetButton event, EntityRef entity) {
+    public void onDecreaseOffsetButton(ZoomOutButton event, EntityRef entity) {
         if (event.isDown()) {
-            renderer.decreaseViewingAxisOffset();
+            renderer.zoomOut();
 
             event.consume();
         }
@@ -208,7 +147,7 @@ public class WorldControlSystem implements ComponentSystem {
             event.consume();
         }
     }
-    
+
     @ReceiveEvent(components = {ClientComponent.class})
     public void onScrollForwardButton(ScrollForwardButton event, EntityRef entity) {
         if (event.isDown()) {
@@ -217,7 +156,7 @@ public class WorldControlSystem implements ComponentSystem {
             event.consume();
         }
     }
-    
+
     @ReceiveEvent(components = {ClientComponent.class})
     public void onScrollForwardButton(ScrollBackwardButton event, EntityRef entity) {
         if (event.isDown()) {
@@ -226,5 +165,66 @@ public class WorldControlSystem implements ComponentSystem {
             event.consume();
         }
     }
-}
 
+    public final class MyRegisterBindButton implements RegisterBindButton {
+        @Override
+        public Class<? extends Annotation> annotationType() {
+            // TODO Auto-generated method stub
+            return null;
+        }
+
+        @Override
+        public boolean repeating() {
+            return false;
+        }
+
+        @Override
+        public ActivateMode mode() {
+            return ActivateMode.BOTH;
+        }
+
+        @Override
+        public String id() {
+            return "changeMapAxis";
+        }
+
+        @Override
+        public String description() {
+            return "Change Map Axis";
+        }
+
+        @Override
+        public String category() {
+            return null;
+        }
+    }
+
+    public final class MyInput implements Input {
+        int id;
+
+        public MyInput(int id) {
+            this.id = id;
+        }
+
+        @Override
+        public InputType getType() {
+            return InputType.KEY;
+        }
+
+        @Override
+        public String getName() {
+            return "don't care";
+        }
+
+        @Override
+        public int getId() {
+            return id;
+        }
+
+        @Override
+        public String getDisplayName() {
+            return "don't care";
+        }
+    }
+
+}

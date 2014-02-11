@@ -23,10 +23,10 @@ import javax.vecmath.Matrix3f;
 import javax.vecmath.Matrix4f;
 
 import org.terasology.asset.AssetUri;
+import org.terasology.rendering.assets.material.BaseMaterial;
 import org.terasology.rendering.assets.material.MaterialData;
 import org.terasology.rendering.assets.shader.ShaderProgramFeature;
 import org.terasology.rendering.assets.texture.Texture;
-import org.terasology.rendering.assets.material.BaseMaterial;
 
 public class AwtMaterial extends BaseMaterial {
 

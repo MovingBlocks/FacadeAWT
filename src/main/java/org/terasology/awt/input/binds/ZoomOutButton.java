@@ -24,7 +24,7 @@ import org.terasology.input.RegisterBindButton;
 /**
  * @author mkienenb
  */
-@RegisterBindButton(id = "decreaseMapViewingAxisOffset", description = "Decrease Map Viewing Axis Offset")
+@RegisterBindButton(id = "zoomOut", description = "Zoom Out")
 @DefaultBinding(type = InputType.KEY, id = Keyboard.KeyId.NUMPAD_MINUS)
-public class DecreaseOffsetButton extends BindButtonEvent {
+public class ZoomOutButton extends BindButtonEvent {
 }
