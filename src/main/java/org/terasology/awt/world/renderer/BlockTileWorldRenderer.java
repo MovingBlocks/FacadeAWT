@@ -225,7 +225,7 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
         for (int i = 0; i < blocksWide; i++) {
             for (int j = 0; j < blocksHigh; j++) {
 
-                Vector2i relativeCellLocation = new Vector2i((i - mapCenterX), (j - mapCenterY));
+                Vector2i relativeCellLocation = new Vector2i((j - mapCenterY), (i - mapCenterX));
 
                 Vector3i relativeLocation;
                 switch (displayAxisType) {
