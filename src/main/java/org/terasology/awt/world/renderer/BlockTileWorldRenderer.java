@@ -19,6 +19,7 @@ import java.awt.Graphics;
 import java.awt.image.BufferedImage;
 import java.awt.image.ImageObserver;
 import java.util.Map;
+import java.util.Objects;
 
 import javax.vecmath.Vector2f;
 import javax.vecmath.Vector3f;
@@ -26,18 +27,11 @@ import javax.vecmath.Vector3f;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.terasology.asset.Assets;
-import org.terasology.awt.input.binds.DecreaseOffsetButton;
-import org.terasology.awt.input.binds.IncreaseOffsetButton;
-import org.terasology.awt.input.binds.ToggleMapAxisButton;
 import org.terasology.engine.ComponentSystemManager;
 import org.terasology.engine.subsystem.DisplayDevice;
 import org.terasology.engine.subsystem.awt.assets.AwtTexture;
 import org.terasology.engine.subsystem.awt.devices.AwtDisplayDevice;
 import org.terasology.engine.subsystem.awt.renderer.AbstractWorldRenderer;
-import org.terasology.entitySystem.entity.EntityRef;
-import org.terasology.entitySystem.event.ReceiveEvent;
-import org.terasology.entitySystem.systems.ComponentSystem;
-import org.terasology.logic.characters.CharacterComponent;
 import org.terasology.logic.players.LocalPlayer;
 import org.terasology.logic.players.LocalPlayerSystem;
 import org.terasology.math.Rect2i;
@@ -55,6 +49,7 @@ import org.terasology.world.block.BlockAppearance;
 import org.terasology.world.block.BlockPart;
 import org.terasology.world.block.BlockUri;
 import org.terasology.world.block.loader.WorldAtlas;
+import org.terasology.world.chunks.ChunkConstants;
 import org.terasology.world.chunks.ChunkProvider;
 
 import com.google.common.collect.Maps;
@@ -70,9 +65,10 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
 
     private int viewingAxisOffset;
 
-    // TODO: also need to key on BlockPart
+    private Vector3i cameraOffset = new Vector3i();
+
     // TODO: better to return source rect + image?
-    private Map<BlockUri, TextureRegion> cachedTiles = Maps.newHashMap();
+    private Map<BufferedTileCacheKey, TextureRegion> cachedTiles = Maps.newHashMap();
 
     public BlockTileWorldRenderer(WorldProvider worldProvider, ChunkProvider chunkProvider, LocalPlayerSystem localPlayerSystem) {
         super(worldProvider, chunkProvider, localPlayerSystem);
@@ -80,7 +76,7 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
         textureAtlas = Assets.getTexture("engine:terrain");
 
         ComponentSystemManager componentSystemManager = CoreRegistry.get(ComponentSystemManager.class);
-        componentSystemManager.register(new WorldControlSystem(), "awt:WorldControlSystem");
+        componentSystemManager.register(new WorldControlSystem(this), "awt:WorldControlSystem");
     }
 
     public void renderWorld(Camera camera) {
@@ -107,8 +103,10 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
 
         LocalPlayer localPlayer = CoreRegistry.get(LocalPlayer.class);
         Vector3f worldPosition = localPlayer.getPosition();
+        
         Vector3i blockPosition = new Vector3i(Math.round(worldPosition.x), Math.round(worldPosition.y), Math.round(worldPosition.z));
-
+        blockPosition.add(cameraOffset);
+        
         for (int i = 0; i < blocksWide; i++) {
             for (int j = 0; j < blocksHigh; j++) {
 
@@ -131,46 +129,48 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
                         throw new RuntimeException("displayAxisType containts invalid value");
                 }
 
-                // From top view, see what we're walking on, not what's at knee level
-                blockPosition.sub(0, 0, 0);
-
+                Vector3i offsetPosition;
                 int offset = viewingAxisOffset;
                 switch (displayAxisType) {
                     case XY_AXIS:
-                        blockPosition.add(0, 0, offset);
+                        offsetPosition = new Vector3i(0, 0, offset);
                         break;
                     case XZ_AXIS:
-                        blockPosition.add(0, offset, 0);
+                        offsetPosition = new Vector3i(0, offset, 0);
                         break;
                     case YZ_AXIS:
-                        blockPosition.add(offset, 0, 0);
+                        offsetPosition = new Vector3i(offset, 0, 0);
                         break;
+                    default:
+                        throw new RuntimeException("illegal displayAxisType " + displayAxisType);
                 }
 
                 relativeLocation.add(blockPosition);
+                relativeLocation.add(offsetPosition);
                 Block block = worldProvider.getBlock(relativeLocation);
                 if (null != block) {
 
-                    BlockUri key = block.getURI();
+                    BlockUri blockUri = block.getURI();
+                    BlockAppearance primaryAppearance = block.getPrimaryAppearance();
+
+                    BlockPart blockPart;
+                    switch (displayAxisType) {
+                        case XZ_AXIS: // top down view
+                            blockPart = BlockPart.TOP;
+                            break;
+                        case XY_AXIS:
+                            blockPart = BlockPart.FRONT; // todo: front/left/right/back needs to be picked base on viewpoint
+                            break;
+                        case YZ_AXIS:
+                            blockPart = BlockPart.LEFT; // todo: front/left/right/back needs to be picked base on viewpoint
+                            break;
+                        default:
+                            throw new RuntimeException("displayAxisType containts invalid value");
+                    }
+
+                    BufferedTileCacheKey key = new BufferedTileCacheKey(blockUri, blockPart);
                     TextureRegion textureRegion = cachedTiles.get(key);
                     if (null == textureRegion) {
-                        BlockAppearance primaryAppearance = block.getPrimaryAppearance();
-
-                        BlockPart blockPart;
-                        switch (displayAxisType) {
-                            case XZ_AXIS: // top down view
-                                blockPart = BlockPart.TOP;
-                                break;
-                            case XY_AXIS:
-                                blockPart = BlockPart.FRONT; // todo: front/left/right/back needs to be picked base on viewpoint
-                                break;
-                            case YZ_AXIS:
-                                blockPart = BlockPart.LEFT; // todo: front/left/right/back needs to be picked base on viewpoint
-                                break;
-                            default:
-                                throw new RuntimeException("displayAxisType containts invalid value");
-                        }
-
                         WorldAtlas worldAtlas = CoreRegistry.get(WorldAtlas.class);
                         float tileSize = worldAtlas.getRelativeTileSize();
 
@@ -211,6 +211,20 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
         }
     }
 
+    public void increaseViewingAxisOffset() {
+        viewingAxisOffset += 1;
+        if (viewingAxisOffset > (ChunkConstants.SIZE_Y-1)) {
+            viewingAxisOffset = (ChunkConstants.SIZE_Y-1);
+        }
+    }
+
+    public void decreaseViewingAxisOffset() {
+        viewingAxisOffset -= 1;
+        if (viewingAxisOffset < 0) {
+            viewingAxisOffset = 0;
+        }
+    }
+
     public void toggleAxis() {
         switch (displayAxisType) {
             case XY_AXIS:
@@ -225,49 +239,37 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
         }
     }
 
-    public class WorldControlSystem implements ComponentSystem {
-
-        public WorldControlSystem() {
+    public class BufferedTileCacheKey {
+        private BlockUri blockUri;
+        private BlockPart blockPart;
+        
+        public BufferedTileCacheKey(BlockUri blockUri, BlockPart blockPart) {
+            super();
+            this.blockUri = blockUri;
+            this.blockPart = blockPart;
+        }
+        
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj instanceof BufferedTileCacheKey) {
+                BufferedTileCacheKey other = (BufferedTileCacheKey) obj;
+                return Objects.equals(blockUri, other.blockUri)
+                       && Objects.equals(blockPart, other.blockPart);
+            }
+            return false;
         }
 
         @Override
-        public void initialise() {
-        }
-
-        @Override
-        public void shutdown() {
-        }
-
-        @ReceiveEvent(components = {CharacterComponent.class})
-        public void onIncreaseOffsetButton(IncreaseOffsetButton event, EntityRef entity) {
-            if (event.isDown()) {
-                viewingAxisOffset += 1;
-
-                event.consume();
-            }
-        }
-
-        @ReceiveEvent(components = {CharacterComponent.class})
-        public void onDecreaseOffsetButton(DecreaseOffsetButton event, EntityRef entity) {
-            if (event.isDown()) {
-                viewingAxisOffset -= 1;
-
-                event.consume();
-            }
-        }
-
-        @ReceiveEvent(components = {CharacterComponent.class})
-        public void onToggleMinimapAxisButton(ToggleMapAxisButton event, EntityRef entity) {
-            if (event.isDown()) {
-                toggleAxis();
-
-                event.consume();
-            }
+        public int hashCode() {
+            return Objects.hash(blockUri, blockPart);
         }
     }
 
-    public class BufferedTileCacheKey {
-
+    public void changeCameraOffsetBy(int i, int j, int k) {
+        cameraOffset = new Vector3i(cameraOffset.getX() + i, cameraOffset.getY() + j, cameraOffset.getZ() + k);
     }
 
 }

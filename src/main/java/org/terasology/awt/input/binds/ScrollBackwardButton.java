@@ -24,7 +24,7 @@ import org.terasology.input.RegisterBindButton;
 /**
  * @author mkienenb
  */
-@RegisterBindButton(id = "decreaseMapViewingAxisOffset", description = "Decrease Map Viewing Axis Offset")
-@DefaultBinding(type = InputType.KEY, id = Keyboard.KeyId.NUMPAD_MINUS)
-public class DecreaseOffsetButton extends BindButtonEvent {
+@RegisterBindButton(id = "scrollBackward", description = "Scroll Backward")
+@DefaultBinding(type = InputType.KEY, id = Keyboard.KeyId.NUMPAD_4)
+public class ScrollBackwardButton extends BindButtonEvent {
 }
