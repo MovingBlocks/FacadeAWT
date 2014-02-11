@@ -346,11 +346,11 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
     }
 
     public void zoomIn() {
-        zoomLevel = zoomLevel / 2f;
+        zoomLevel = zoomLevel * 2f;
     }
 
     public void zoomOut() {
-        zoomLevel = zoomLevel * 2f;
+        zoomLevel = zoomLevel / 2f;
     }
 
 }
