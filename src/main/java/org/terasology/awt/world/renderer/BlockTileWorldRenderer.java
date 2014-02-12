@@ -15,7 +15,9 @@
  */
 package org.terasology.awt.world.renderer;
 
+import java.awt.BasicStroke;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.ImageObserver;
 import java.util.Map;
@@ -143,6 +145,7 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
     public void renderBlockTileWorld(Camera camera) {
         AwtDisplayDevice displayDevice = (AwtDisplayDevice) CoreRegistry.get(DisplayDevice.class);
         Graphics drawGraphics = displayDevice.getDrawGraphics();
+        Graphics2D drawGraphics2d = (Graphics2D)drawGraphics;
         int width = displayDevice.mainFrame.getWidth();
         int height = displayDevice.mainFrame.getHeight();
 
@@ -189,6 +192,8 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
                 throw new RuntimeException("illegal displayAxisType " + displayAxisType);
         }
 
+        blockPosition.add(offsetPosition);
+
         Vector3i behindLocationChange;
         switch (displayAxisType) {
             case XZ_AXIS:
@@ -220,10 +225,19 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
                 throw new RuntimeException("displayAxisType containts invalid value");
         }
 
-        blockPosition.add(offsetPosition);
-
         for (int i = 0; i < blocksWide; i++) {
             for (int j = 0; j < blocksHigh; j++) {
+
+                Rect2i destinationArea = Rect2i.createFromMinAndSize(
+                        i * blockTileWidth,
+                        j * blockTileHeight,
+                        blockTileWidth,
+                        blockTileHeight);
+
+                int dx1 = destinationArea.minX();
+                int dy1 = destinationArea.minY();
+                int dx2 = destinationArea.maxX();
+                int dy2 = destinationArea.maxY();
 
                 Vector2i relativeCellLocation = new Vector2i((j - mapCenterY), (i - mapCenterX));
 
@@ -254,52 +268,47 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
                         relativeLocation.add(behindLocationChange);
                         block = getBlockAtWorldPosition(worldProvider, relativeLocation);
                     }
-                    if (BlockManager.getAir().equals(block)) {
-                        // let it remain black
-                        continue;
+
+                    // let it remain black if nothing is there
+                    if (!BlockManager.getAir().equals(block)) {
+
+                        BlockUri blockUri = block.getURI();
+                        BlockAppearance primaryAppearance = block.getPrimaryAppearance();
+    
+                        BufferedTileCacheKey key = new BufferedTileCacheKey(blockUri, blockPart);
+                        TextureRegion textureRegion = cachedTiles.get(key);
+                        if (null == textureRegion) {
+                            WorldAtlas worldAtlas = CoreRegistry.get(WorldAtlas.class);
+                            float tileSize = worldAtlas.getRelativeTileSize();
+    
+                            Vector2f textureAtlasPos = primaryAppearance.getTextureAtlasPos(blockPart);
+    
+                            textureRegion = new BasicTextureRegion(textureAtlas, textureAtlasPos, new Vector2f(tileSize, tileSize));
+                            cachedTiles.put(key, textureRegion);
+                        }
+    
+                        Texture texture = textureRegion.getTexture();
+                        AwtTexture awtTexture = (AwtTexture) texture;
+    
+                        BufferedImage bufferedImage = awtTexture.getBufferedImage(texture.getWidth(), texture.getHeight(), alpha, Color.WHITE);
+    
+                        Rect2i pixelRegion = textureRegion.getPixelRegion();
+    
+                        int sx1 = pixelRegion.minX();
+                        int sy1 = pixelRegion.minY();
+                        int sx2 = pixelRegion.maxX();
+                        int sy2 = pixelRegion.maxY();
+    
+                        ImageObserver observer = null;
+    
+                        drawGraphics.drawImage(bufferedImage, dx1, dy1, dx2, dy2, sx1, sy1, sx2, sy2, observer);
                     }
-
-                    BlockUri blockUri = block.getURI();
-                    BlockAppearance primaryAppearance = block.getPrimaryAppearance();
-
-                    BufferedTileCacheKey key = new BufferedTileCacheKey(blockUri, blockPart);
-                    TextureRegion textureRegion = cachedTiles.get(key);
-                    if (null == textureRegion) {
-                        WorldAtlas worldAtlas = CoreRegistry.get(WorldAtlas.class);
-                        float tileSize = worldAtlas.getRelativeTileSize();
-
-                        Vector2f textureAtlasPos = primaryAppearance.getTextureAtlasPos(blockPart);
-
-                        textureRegion = new BasicTextureRegion(textureAtlas, textureAtlasPos, new Vector2f(tileSize, tileSize));
-                        cachedTiles.put(key, textureRegion);
-                    }
-
-                    Texture texture = textureRegion.getTexture();
-                    AwtTexture awtTexture = (AwtTexture) texture;
-
-                    BufferedImage bufferedImage = awtTexture.getBufferedImage(texture.getWidth(), texture.getHeight(), alpha, Color.WHITE);
-
-                    Rect2i pixelRegion = textureRegion.getPixelRegion();
-
-                    int sx1 = pixelRegion.minX();
-                    int sy1 = pixelRegion.minY();
-                    int sx2 = pixelRegion.maxX();
-                    int sy2 = pixelRegion.maxY();
-
-                    Rect2i destinationArea = Rect2i.createFromMinAndSize(
-                            i * blockTileWidth,
-                            j * blockTileHeight,
-                            blockTileWidth,
-                            blockTileHeight);
-
-                    int dx1 = destinationArea.minX();
-                    int dy1 = destinationArea.minY();
-                    int dx2 = destinationArea.maxX();
-                    int dy2 = destinationArea.maxY();
-
-                    ImageObserver observer = null;
-
-                    drawGraphics.drawImage(bufferedImage, dx1, dy1, dx2, dy2, sx1, sy1, sx2, sy2, observer);
+                }
+                
+                if (relativeCellLocation.x == 0 && relativeCellLocation.y == 0) {
+                    drawGraphics.setColor(java.awt.Color.WHITE);
+                    drawGraphics2d.setStroke(new BasicStroke(2));
+                    drawGraphics.drawRect(dx1, dy1, blockTileWidth, blockTileHeight);
                 }
             }
         }
