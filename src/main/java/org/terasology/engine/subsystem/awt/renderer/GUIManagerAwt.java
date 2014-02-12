@@ -130,4 +130,20 @@ public class GUIManagerAwt implements GUIManager {
     public void toggleWindow(String id) {
     }
 
+    @Override
+    public void preBegin() {
+    }
+
+    @Override
+    public void postBegin() {
+    }
+
+    @Override
+    public void preSave() {
+    }
+
+    @Override
+    public void postSave() {
+    }
+
 }

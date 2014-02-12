@@ -227,4 +227,20 @@ public class WorldControlSystem implements ComponentSystem {
         }
     }
 
+    @Override
+    public void preBegin() {
+    }
+
+    @Override
+    public void postBegin() {
+    }
+
+    @Override
+    public void preSave() {
+    }
+
+    @Override
+    public void postSave() {
+    }
+
 }
