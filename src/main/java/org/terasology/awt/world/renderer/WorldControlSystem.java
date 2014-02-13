@@ -17,19 +17,14 @@ import org.terasology.awt.input.binds.ScrollUpButton;
 import org.terasology.awt.input.binds.ToggleMapAxisButton;
 import org.terasology.awt.input.binds.ZoomInButton;
 import org.terasology.awt.input.binds.ZoomOutButton;
-import org.terasology.engine.SimpleUri;
 import org.terasology.entitySystem.entity.EntityManager;
 import org.terasology.entitySystem.entity.EntityRef;
 import org.terasology.entitySystem.event.EventPriority;
 import org.terasology.entitySystem.event.ReceiveEvent;
 import org.terasology.entitySystem.systems.ComponentSystem;
 import org.terasology.input.ActivateMode;
-import org.terasology.input.BindButtonEvent;
-import org.terasology.input.BindableButton;
 import org.terasology.input.Input;
-import org.terasology.input.InputSystem;
 import org.terasology.input.InputType;
-import org.terasology.input.Keyboard;
 import org.terasology.input.MouseInput;
 import org.terasology.input.RegisterBindButton;
 import org.terasology.input.events.MouseButtonEvent;
@@ -51,44 +46,6 @@ public class WorldControlSystem implements ComponentSystem {
     public WorldControlSystem(BlockTileWorldRenderer renderer) {
         this.renderer = renderer;
 
-        InputSystem inputSystem = CoreRegistry.get(InputSystem.class);
-        RegisterBindButton info = new MyRegisterBindButton();
-
-        Input input = new MyKeyInput(Keyboard.KeyId.NUMPAD_MINUS);
-        manuallyBindKey(info, input, inputSystem, new ZoomOutButton());
-
-        input = new MyKeyInput(Keyboard.KeyId.NUMPAD_PLUS);
-        manuallyBindKey(info, input, inputSystem, new ZoomInButton());
-
-        input = new MyKeyInput(Keyboard.KeyId.NUMPAD_0);
-        manuallyBindKey(info, input, inputSystem, new ToggleMapAxisButton());
-
-        input = new MyKeyInput(Keyboard.KeyId.NUMPAD_4);
-        manuallyBindKey(info, input, inputSystem, new ScrollLeftButton());
-
-        input = new MyKeyInput(Keyboard.KeyId.NUMPAD_6);
-        manuallyBindKey(info, input, inputSystem, new ScrollRightButton());
-
-        input = new MyKeyInput(Keyboard.KeyId.NUMPAD_8);
-        manuallyBindKey(info, input, inputSystem, new ScrollForwardButton());
-
-        input = new MyKeyInput(Keyboard.KeyId.NUMPAD_2);
-        manuallyBindKey(info, input, inputSystem, new ScrollBackwardButton());
-
-        input = new MyKeyInput(Keyboard.KeyId.NUMPAD_9);
-        manuallyBindKey(info, input, inputSystem, new ScrollUpButton());
-
-        input = new MyKeyInput(Keyboard.KeyId.NUMPAD_1);
-        manuallyBindKey(info, input, inputSystem, new ScrollDownButton());
-    }
-
-    private void manuallyBindKey(RegisterBindButton info, Input input, InputSystem inputSystem, BindButtonEvent bindButtonEvent) {
-        SimpleUri bindUri = new SimpleUri("awt", info.id());
-        BindableButton bindButton = inputSystem.registerBindButton(bindUri, info.description(), bindButtonEvent);
-        bindButton.setMode(info.mode());
-        bindButton.setRepeating(info.repeating());
-
-        inputSystem.linkBindButtonToInput(input, bindUri);
     }
 
     @Override
