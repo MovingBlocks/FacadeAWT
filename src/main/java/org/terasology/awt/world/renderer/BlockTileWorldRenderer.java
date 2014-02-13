@@ -38,6 +38,12 @@ import org.terasology.engine.subsystem.awt.cities.Sectors;
 import org.terasology.engine.subsystem.awt.cities.SwingRasterizer;
 import org.terasology.engine.subsystem.awt.devices.AwtDisplayDevice;
 import org.terasology.engine.subsystem.awt.renderer.AbstractWorldRenderer;
+import org.terasology.entitySystem.entity.EntityManager;
+import org.terasology.entitySystem.entity.EntityRef;
+import org.terasology.logic.characters.CharacterComponent;
+import org.terasology.logic.common.DisplayNameComponent;
+import org.terasology.logic.inventory.ItemComponent;
+import org.terasology.logic.location.LocationComponent;
 import org.terasology.logic.players.LocalPlayer;
 import org.terasology.logic.players.LocalPlayerSystem;
 import org.terasology.math.Rect2i;
@@ -80,8 +86,10 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
     // Pixels per block
     private float zoomLevel = 16;
 
-    int depthsOfTransparency = 8;
+    private int depthsOfTransparency = 8;
     private float[] darken;
+    
+    private EntityManager entityManager;
 
     public BlockTileWorldRenderer(WorldProvider worldProvider, ChunkProvider chunkProvider, LocalPlayerSystem localPlayerSystem) {
         super(worldProvider, chunkProvider, localPlayerSystem);
@@ -100,6 +108,8 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
         for (int i = 1; i < depthsOfTransparency; i++) {
             darken[i] = (depthsOfTransparency - i) / ((float)depthsOfTransparency);
         }
+        
+        entityManager = CoreRegistry.get(EntityManager.class);
     }
 
     public void renderWorld(Camera camera) {
@@ -171,8 +181,8 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
         LocalPlayer localPlayer = CoreRegistry.get(LocalPlayer.class);
         Vector3f worldPosition = localPlayer.getPosition();
 
-        Vector3i blockPosition = new Vector3i(Math.round(worldPosition.x), Math.round(worldPosition.y), Math.round(worldPosition.z));
-        blockPosition.add(cameraOffset);
+        Vector3i centerBlockPosition = new Vector3i(Math.round(worldPosition.x), Math.round(worldPosition.y), Math.round(worldPosition.z));
+        centerBlockPosition.add(cameraOffset);
 
         WorldProvider worldProvider = CoreRegistry.get(WorldProvider.class);
 
@@ -192,7 +202,7 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
                 throw new RuntimeException("illegal displayAxisType " + displayAxisType);
         }
 
-        blockPosition.add(offsetPosition);
+        centerBlockPosition.add(offsetPosition);
 
         Vector3i behindLocationChange;
         switch (displayAxisType) {
@@ -256,7 +266,7 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
                         throw new RuntimeException("displayAxisType containts invalid value");
                 }
 
-                relativeLocation.add(blockPosition);
+                relativeLocation.add(centerBlockPosition);
                 Block block = getBlockAtWorldPosition(worldProvider, relativeLocation);
                 if (null != block) {
 
@@ -311,6 +321,81 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
                     drawGraphics.drawRect(dx1, dy1, blockTileWidth, blockTileHeight);
                 }
             }
+        }
+        
+        
+        for (EntityRef entityRef : entityManager.getEntitiesWith(CharacterComponent.class)) {
+            if (entityRef.equals(localPlayer.getCharacterEntity())) {
+                // Don't currently care about the idea of a local player as a character
+                continue;
+            }
+            DisplayNameComponent displayNameComponent = entityRef.getComponent(DisplayNameComponent.class);
+            String displayName = String.valueOf(entityRef);
+            if (null != displayNameComponent) {
+                displayName = displayNameComponent.name;
+            }
+            
+            // Temporarily using item component's icon for NPCs.
+            ItemComponent itemComponent = entityRef.getComponent(ItemComponent.class);
+            if (null != itemComponent) {
+                LocationComponent locationComponent = entityRef.getComponent(LocationComponent.class);
+
+                if (null != locationComponent) {
+                    TextureRegion textureRegion = itemComponent.icon;
+                    if (null != textureRegion) {
+                        AwtTexture awtTexture = (AwtTexture) textureRegion.getTexture();
+    
+                        BufferedImage bufferedImage = awtTexture.getBufferedImage(awtTexture.getWidth(), awtTexture.getHeight(), 1f, Color.WHITE);
+    
+                        Rect2i pixelRegion = textureRegion.getPixelRegion();
+    
+                        Vector3f entityWorldPosition = locationComponent.getWorldPosition();
+                        Vector3i relativeEntityWorldPosition = new Vector3i(entityWorldPosition);
+                        relativeEntityWorldPosition.sub(centerBlockPosition);
+                        
+                        Vector2i screenLocation;
+                        switch (displayAxisType) {
+                            case XZ_AXIS: // top down view
+                                screenLocation = new Vector2i(relativeEntityWorldPosition.z, -relativeEntityWorldPosition.x);
+                                break;
+                            case YZ_AXIS:
+                                screenLocation = new Vector2i(relativeEntityWorldPosition.z, relativeEntityWorldPosition.y);
+                                break;
+                            case XY_AXIS:
+                                screenLocation = new Vector2i(relativeEntityWorldPosition.x, relativeEntityWorldPosition.y);
+                                break;
+                            default:
+                                throw new RuntimeException("displayAxisType containts invalid value");
+                        }
+                        
+                        int drawLocationX = (screenLocation.x + mapCenterX) * blockTileWidth;
+                        int drawLocationY = (screenLocation.y + mapCenterY) * blockTileHeight;
+                        Rect2i destRect = Rect2i.createFromMinAndSize(drawLocationX - (pixelRegion.width() / 2), drawLocationY - (pixelRegion.height() / 2),
+                                pixelRegion.width() / 32 * blockTileWidth, pixelRegion.height() / 32 * blockTileHeight);
+                        
+                        int destx1 = destRect.minX();
+                        int desty1 = destRect.minY();
+                        int destx2 = destRect.maxX();
+                        int desty2 = destRect.maxY();
+
+                        int sx1 = pixelRegion.minX();
+                        int sy1 = pixelRegion.minY();
+                        int sx2 = pixelRegion.maxX();
+                        int sy2 = pixelRegion.maxY();
+    
+                        ImageObserver observer = null;
+    
+                        drawGraphics.drawImage(bufferedImage, destx1, desty1, destx2, desty2, sx1, sy1, sx2, sy2, observer);
+                    } else {
+                        logger.info("Need to render " + displayName + ": no itemComponent.icon");
+                    }
+                } else {
+                    logger.info("Need to render " + displayName + ": no locationComponent");
+                }
+            } else {
+                logger.info("Need to render " + displayName + ": no itemComponent");
+            }
+            
         }
     }
 
