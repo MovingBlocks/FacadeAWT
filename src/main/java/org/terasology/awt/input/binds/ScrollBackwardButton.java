@@ -25,6 +25,6 @@ import org.terasology.input.RegisterBindButton;
  * @author mkienenb
  */
 @RegisterBindButton(id = "scrollBackward", description = "Scroll Backward")
-@DefaultBinding(type = InputType.KEY, id = Keyboard.KeyId.NUMPAD_4)
+@DefaultBinding(type = InputType.KEY, id = Keyboard.KeyId.NUMPAD_2)
 public class ScrollBackwardButton extends BindButtonEvent {
 }
