@@ -131,6 +131,9 @@ public class AwtGraphics implements EngineSubsystem {
 
         AwtKeyboardDevice awtKeyboardDevice = new AwtKeyboardDevice(mainFrame);
         inputSystem.setKeyboardDevice(awtKeyboardDevice);
+        
+        config.getInput().getBinds().updateForChangedMods();
+        config.save();
     }
 
     @Override
