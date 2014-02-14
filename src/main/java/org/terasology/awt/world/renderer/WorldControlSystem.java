@@ -1,12 +1,9 @@
 package org.terasology.awt.world.renderer;
 
 import java.awt.Color;
-import java.lang.annotation.Annotation;
 
 import javax.vecmath.Vector3f;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.terasology.asset.Assets;
 import org.terasology.awt.input.binds.ScrollBackwardButton;
 import org.terasology.awt.input.binds.ScrollDownButton;
@@ -21,12 +18,8 @@ import org.terasology.entitySystem.entity.EntityManager;
 import org.terasology.entitySystem.entity.EntityRef;
 import org.terasology.entitySystem.event.EventPriority;
 import org.terasology.entitySystem.event.ReceiveEvent;
-import org.terasology.entitySystem.systems.ComponentSystem;
-import org.terasology.input.ActivateMode;
-import org.terasology.input.Input;
-import org.terasology.input.InputType;
+import org.terasology.entitySystem.systems.BaseComponentSystem;
 import org.terasology.input.MouseInput;
-import org.terasology.input.RegisterBindButton;
 import org.terasology.input.events.MouseButtonEvent;
 import org.terasology.logic.selection.ApplyBlockSelectionEvent;
 import org.terasology.math.Region3i;
@@ -37,11 +30,13 @@ import org.terasology.rendering.assets.texture.Texture;
 import org.terasology.rendering.assets.texture.TextureUtil;
 import org.terasology.world.selection.BlockSelectionComponent;
 
-public class WorldControlSystem implements ComponentSystem {
+public class WorldControlSystem extends BaseComponentSystem {
 
-    private static final Logger logger = LoggerFactory.getLogger(WorldControlSystem.class);
+    // private static final Logger logger = LoggerFactory.getLogger(WorldControlSystem.class);
 
     private BlockTileWorldRenderer renderer;
+
+    private EntityRef blockSelectionEntity = EntityRef.NULL;
 
     public WorldControlSystem(BlockTileWorldRenderer renderer) {
         this.renderer = renderer;
@@ -49,11 +44,8 @@ public class WorldControlSystem implements ComponentSystem {
     }
 
     @Override
-    public void initialise() {
-    }
-
-    @Override
     public void shutdown() {
+        blockSelectionEntity.destroy();
     }
 
     @ReceiveEvent(components = {ClientComponent.class})
@@ -136,85 +128,6 @@ public class WorldControlSystem implements ComponentSystem {
             event.consume();
         }
     }
-
-    public final class MyRegisterBindButton implements RegisterBindButton {
-        @Override
-        public Class<? extends Annotation> annotationType() {
-            // TODO Auto-generated method stub
-            return null;
-        }
-
-        @Override
-        public boolean repeating() {
-            return false;
-        }
-
-        @Override
-        public ActivateMode mode() {
-            return ActivateMode.BOTH;
-        }
-
-        @Override
-        public String id() {
-            return "changeMapAxis";
-        }
-
-        @Override
-        public String description() {
-            return "Change Map Axis";
-        }
-
-        @Override
-        public String category() {
-            return null;
-        }
-    }
-
-    public final class MyKeyInput implements Input {
-        int id;
-
-        public MyKeyInput(int id) {
-            this.id = id;
-        }
-
-        @Override
-        public InputType getType() {
-            return InputType.KEY;
-        }
-
-        @Override
-        public String getName() {
-            return "don't care";
-        }
-
-        @Override
-        public int getId() {
-            return id;
-        }
-
-        @Override
-        public String getDisplayName() {
-            return "don't care";
-        }
-    }
-
-    @Override
-    public void preBegin() {
-    }
-
-    @Override
-    public void postBegin() {
-    }
-
-    @Override
-    public void preSave() {
-    }
-
-    @Override
-    public void postSave() {
-    }
-
-    private EntityRef blockSelectionEntity = EntityRef.NULL;
 
     @ReceiveEvent(components = {ClientComponent.class}, priority = EventPriority.PRIORITY_HIGH)
     public void onMouseButtonEvent(MouseButtonEvent event, EntityRef entity) {
