@@ -25,8 +25,11 @@ import org.terasology.asset.AssetFactory;
 import org.terasology.asset.AssetManager;
 import org.terasology.asset.AssetType;
 import org.terasology.asset.AssetUri;
+import org.terasology.asset.sources.AssetSourceCollection;
+import org.terasology.asset.sources.ClasspathSource;
 import org.terasology.config.Config;
 import org.terasology.engine.ComponentSystemManager;
+import org.terasology.engine.TerasologyConstants;
 import org.terasology.engine.modes.GameState;
 import org.terasology.engine.subsystem.DisplayDevice;
 import org.terasology.engine.subsystem.EngineSubsystem;
@@ -85,6 +88,13 @@ public class AwtGraphics implements EngineSubsystem {
 
     @Override
     public void postInitialise(Config config) {
+        AssetManager assetManager = CoreRegistry.get(AssetManager.class);
+
+        ClasspathSource sourceFacade = new ClasspathSource(TerasologyConstants.ENGINE_MODULE,
+                getClass().getProtectionDomain().getCodeSource(), TerasologyConstants.ASSETS_SUBDIRECTORY, TerasologyConstants.OVERRIDES_SUBDIRECTORY);
+        assetManager.addAssetSource(sourceFacade);
+
+        
         CoreRegistry.putPermanently(RenderingSubsystemFactory.class, new AwtRenderingSubsystemFactory());
 
         GraphicsEnvironment env = GraphicsEnvironment.getLocalGraphicsEnvironment();
@@ -103,8 +113,6 @@ public class AwtGraphics implements EngineSubsystem {
         CoreRegistry.putPermanently(DisplayDevice.class, awtDisplay);
 
         initHeadless(awtDisplay);
-
-        AssetManager assetManager = CoreRegistry.get(AssetManager.class);
 
         // TODO: read from config?
         awtDisplay.setFullscreen(false);
