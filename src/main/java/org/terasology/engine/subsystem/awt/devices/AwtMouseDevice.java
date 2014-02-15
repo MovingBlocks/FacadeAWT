@@ -15,7 +15,6 @@
  */
 package org.terasology.engine.subsystem.awt.devices;
 
-import java.awt.Insets;
 import java.awt.MouseInfo;
 import java.awt.Point;
 import java.awt.PointerInfo;
@@ -131,12 +130,8 @@ public class AwtMouseDevice implements MouseDevice {
     public Vector2i getPosition() {
         PointerInfo pointerInfo = MouseInfo.getPointerInfo();
         Point mouseLocation = pointerInfo.getLocation();
-        //        logger.info("locationBefore=" + mouseLocation);
-        SwingUtilities.convertPointFromScreen(mouseLocation, mainWindow);
-        Insets insets = mainWindow.getInsets();
-        Vector2i v = new Vector2i((int) mouseLocation.getX() - (insets.left + insets.right),
-                (int) mouseLocation.getY() - (insets.top + insets.bottom));
-        //        logger.info(String.valueOf(v));
+        SwingUtilities.convertPointFromScreen(mouseLocation, mainWindow.getContentPane());
+        Vector2i v = new Vector2i((int) mouseLocation.getX(), (int) mouseLocation.getY());
         return v;
     }
 
