@@ -22,19 +22,47 @@ import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.util.List;
 
-import org.newdawn.slick.Color;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.terasology.asset.AbstractAsset;
 import org.terasology.asset.AssetUri;
 import org.terasology.math.Vector2i;
-import org.terasology.rendering.assets.font.BaseFont;
+import org.terasology.rendering.assets.font.FontCharacter;
 import org.terasology.rendering.assets.font.FontData;
 
-public class AwtFont extends BaseFont {
+public class AwtFont extends AbstractAsset<FontData> implements org.terasology.rendering.assets.font.Font {
     private static final Logger logger = LoggerFactory.getLogger(AwtFont.class);
 
+    private FontData data;
+
     public AwtFont(AssetUri uri, FontData data) {
-        super(uri, data);
+        super(uri);
+        reload(data);
+    }
+
+    @Override
+    public void reload(FontData fontData) {
+        this.data = fontData;
+    }
+
+    @Override
+    public void dispose() {
+        this.data = null;
+    }
+
+    @Override
+    public boolean isDisposed() {
+        return data == null;
+    }
+
+    @Override
+    public boolean hasCharacter(Character c) {
+        return c == '\n' || data.getCharacter(c) != null;
+    }
+
+    @Override
+    public FontCharacter getCharacterData(Character c) {
+        return data.getCharacter(c);
     }
 
     @Override
@@ -110,10 +138,6 @@ public class AwtFont extends BaseFont {
         FontMetrics fontMetrics = g2.getFontMetrics();
 
         return fontMetrics.getHeight();
-    }
-
-    @Override
-    public void drawString(int x, int y, String text, Color color) {
     }
 
     public Font getAwtFont() {

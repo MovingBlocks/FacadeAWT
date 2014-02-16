@@ -25,7 +25,6 @@ import org.terasology.asset.AssetFactory;
 import org.terasology.asset.AssetManager;
 import org.terasology.asset.AssetType;
 import org.terasology.asset.AssetUri;
-import org.terasology.asset.sources.AssetSourceCollection;
 import org.terasology.asset.sources.ClasspathSource;
 import org.terasology.config.Config;
 import org.terasology.engine.ComponentSystemManager;
@@ -45,10 +44,8 @@ import org.terasology.engine.subsystem.awt.renderer.AwtRenderingSubsystemFactory
 import org.terasology.engine.subsystem.headless.assets.HeadlessMesh;
 import org.terasology.engine.subsystem.headless.assets.HeadlessShader;
 import org.terasology.engine.subsystem.headless.assets.HeadlessSkeletalMesh;
-import org.terasology.engine.subsystem.headless.renderer.GUIManagerHeadless;
 import org.terasology.engine.subsystem.headless.renderer.ShaderManagerHeadless;
 import org.terasology.input.InputSystem;
-import org.terasology.logic.manager.GUIManager;
 import org.terasology.logic.players.DebugControlSystem;
 import org.terasology.logic.players.MenuControlSystem;
 import org.terasology.registry.CoreRegistry;
@@ -94,7 +91,6 @@ public class AwtGraphics implements EngineSubsystem {
                 getClass().getProtectionDomain().getCodeSource(), TerasologyConstants.ASSETS_SUBDIRECTORY, TerasologyConstants.OVERRIDES_SUBDIRECTORY);
         assetManager.addAssetSource(sourceFacade);
 
-        
         CoreRegistry.putPermanently(RenderingSubsystemFactory.class, new AwtRenderingSubsystemFactory());
 
         GraphicsEnvironment env = GraphicsEnvironment.getLocalGraphicsEnvironment();
@@ -126,8 +122,6 @@ public class AwtGraphics implements EngineSubsystem {
         NUIManagerInternal nuiManager = new NUIManagerInternal(assetManager, canvasRenderer);
         CoreRegistry.putPermanently(NUIManager.class, nuiManager);
 
-        CoreRegistry.putPermanently(GUIManager.class, new GUIManagerHeadless());
-
         //        CoreRegistry.putPermanently(DefaultRenderingProcess.class, new AwtRenderingProcess());
 
         // Input
@@ -139,7 +133,7 @@ public class AwtGraphics implements EngineSubsystem {
 
         AwtKeyboardDevice awtKeyboardDevice = new AwtKeyboardDevice(mainFrame);
         inputSystem.setKeyboardDevice(awtKeyboardDevice);
-        
+
         config.getInput().getBinds().updateForChangedMods();
         config.save();
     }
