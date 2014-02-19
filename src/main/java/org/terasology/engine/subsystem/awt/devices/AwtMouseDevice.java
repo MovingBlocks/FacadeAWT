@@ -15,6 +15,7 @@
  */
 package org.terasology.engine.subsystem.awt.devices;
 
+import java.awt.Dimension;
 import java.awt.MouseInfo;
 import java.awt.Point;
 import java.awt.PointerInfo;
@@ -35,6 +36,7 @@ import org.terasology.input.ButtonState;
 import org.terasology.input.InputType;
 import org.terasology.input.device.InputAction;
 import org.terasology.input.device.MouseDevice;
+import org.terasology.math.Rect2i;
 import org.terasology.math.Vector2i;
 
 import com.google.common.collect.Queues;
@@ -52,8 +54,8 @@ public class AwtMouseDevice implements MouseDevice {
     private Queue<InputAction> inputQueue = Queues.newArrayDeque();
     private Object inputQueueLock = new Object();
 
-    public AwtMouseDevice(JFrame mainWindow) {
-        this.mainWindow = mainWindow;
+    public AwtMouseDevice(JFrame window) {
+        this.mainWindow = window;
         Point mouseLocation = MouseInfo.getPointerInfo().getLocation();
         lastMouseX = (int) mouseLocation.getX();
         lastMouseY = (int) mouseLocation.getY();
@@ -68,7 +70,7 @@ public class AwtMouseDevice implements MouseDevice {
 
                 // TODO:  need to determine if wheel button is pressed
                 int id = 1;
-                InputAction event = new InputAction(InputType.MOUSE_WHEEL.getInput(id), id * wheelRotation / 120);
+                InputAction event = new InputAction(InputType.MOUSE_WHEEL.getInput(id), id * wheelRotation / 120, getPosition());
                 synchronized (inputQueueLock) {
                     inputQueue.add(event);
                 }
@@ -94,8 +96,15 @@ public class AwtMouseDevice implements MouseDevice {
 
             @Override
             public void mouseReleased(MouseEvent e) {
+                Vector2i mousePosition = getPosition();
+                Dimension contentPaneSize = mainWindow.getContentPane().getSize();
+                Rect2i contentPaneRect = Rect2i.createFromMinAndSize(0, 0, contentPaneSize.width, contentPaneSize.height);
+                if (! contentPaneRect.contains(mousePosition)) {
+                    return;
+                }
+                
                 int buttonNumber = getMouseButtonNumberForMouseEvent(e);
-                InputAction event = new InputAction(InputType.MOUSE_BUTTON.getInput(buttonNumber), ButtonState.UP);
+                InputAction event = new InputAction(InputType.MOUSE_BUTTON.getInput(buttonNumber), ButtonState.UP, getPosition());
                 synchronized (inputQueueLock) {
                     inputQueue.add(event);
                 }
@@ -104,8 +113,15 @@ public class AwtMouseDevice implements MouseDevice {
 
             @Override
             public void mousePressed(MouseEvent e) {
+                Vector2i mousePosition = getPosition();
+                Dimension contentPaneSize = mainWindow.getContentPane().getSize();
+                Rect2i contentPaneRect = Rect2i.createFromMinAndSize(0, 0, contentPaneSize.width, contentPaneSize.height);
+                if (! contentPaneRect.contains(mousePosition)) {
+                    return;
+                }
+                
                 int buttonNumber = getMouseButtonNumberForMouseEvent(e);
-                InputAction event = new InputAction(InputType.MOUSE_BUTTON.getInput(buttonNumber), ButtonState.DOWN);
+                InputAction event = new InputAction(InputType.MOUSE_BUTTON.getInput(buttonNumber), ButtonState.DOWN, getPosition());
                 synchronized (inputQueueLock) {
                     inputQueue.add(event);
                 }
