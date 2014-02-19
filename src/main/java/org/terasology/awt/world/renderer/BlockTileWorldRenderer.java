@@ -55,7 +55,6 @@ import org.terasology.registry.CoreRegistry;
 import org.terasology.rendering.assets.texture.BasicTextureRegion;
 import org.terasology.rendering.assets.texture.Texture;
 import org.terasology.rendering.assets.texture.TextureRegion;
-import org.terasology.rendering.assets.texture.TextureUtil;
 import org.terasology.rendering.cameras.Camera;
 import org.terasology.rendering.nui.Color;
 import org.terasology.world.WorldProvider;
@@ -78,8 +77,6 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
     private DisplayAxisType displayAxisType = DisplayAxisType.XZ_AXIS;
 
     private Texture textureAtlas;
-
-    private int viewingAxisOffset;
 
     private Vector3i cameraOffset = new Vector3i();
 
@@ -116,14 +113,16 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
     }
 
     public void renderWorld(Camera camera) {
+        Vector3i centerBlockPosition = getViewBlockLocation();
+
         if (zoomLevel > 1) {
-            renderBlockTileWorld(camera);
+            renderBlockTileWorld(camera, centerBlockPosition);
         } else {
-            renderCityWorld(camera);
+            renderCityWorld(camera, centerBlockPosition);
         }
     }
 
-    private void renderCityWorld(Camera camera) {
+    private void renderCityWorld(Camera camera, Vector3i centerBlockPosition) {
         AwtDisplayDevice displayDevice = (AwtDisplayDevice) CoreRegistry.get(DisplayDevice.class);
         Graphics drawGraphics = displayDevice.getDrawGraphics();
         drawGraphics.setColor(java.awt.Color.LIGHT_GRAY);
@@ -161,7 +160,7 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
     float mapCenterYf;
     Vector3f centerBlockPositionf;
 
-    public void renderBlockTileWorld(Camera camera) {
+    public void renderBlockTileWorld(Camera camera, Vector3i centerBlockPosition) {
         AwtDisplayDevice displayDevice = (AwtDisplayDevice) CoreRegistry.get(DisplayDevice.class);
         Graphics drawGraphics = displayDevice.getDrawGraphics();
         Graphics2D drawGraphics2d = (Graphics2D) drawGraphics;
@@ -193,37 +192,6 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
         int mapCenterX = (int) ((blocksWide + 0.5f) / 2f);
         int mapCenterY = (int) ((blocksHigh + 0.5f) / 2f);
 
-        LocalPlayer localPlayer = CoreRegistry.get(LocalPlayer.class);
-        Vector3f worldPosition = localPlayer.getPosition();
-
-        centerBlockPositionf = new Vector3f(worldPosition);
-        centerBlockPositionf.add(new Vector3f(cameraOffset.x, cameraOffset.y, cameraOffset.z));
-
-        Vector3i centerBlockPosition = new Vector3i(Math.round(worldPosition.x), Math.round(worldPosition.y), Math.round(worldPosition.z));
-        centerBlockPosition.add(cameraOffset);
-
-        //        centerBlockPositionf = new Vector3f(Math.round(centerBlockPosition.x), Math.round(centerBlockPosition.y), Math.round(centerBlockPosition.z));
-
-        WorldProvider worldProvider = CoreRegistry.get(WorldProvider.class);
-
-        Vector3i offsetPosition;
-        int offset = viewingAxisOffset;
-        switch (displayAxisType) {
-            case XZ_AXIS:
-                offsetPosition = new Vector3i(0, offset, 0);
-                break;
-            case YZ_AXIS:
-                offsetPosition = new Vector3i(offset, 0, 0);
-                break;
-            case XY_AXIS:
-                offsetPosition = new Vector3i(0, 0, offset);
-                break;
-            default:
-                throw new RuntimeException("illegal displayAxisType " + displayAxisType);
-        }
-
-        centerBlockPosition.add(offsetPosition);
-
         Vector3i behindLocationChange;
         switch (displayAxisType) {
             case XZ_AXIS:
@@ -239,7 +207,7 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
                 throw new RuntimeException("illegal displayAxisType " + displayAxisType);
         }
 
-        // TODO: If we base it on viewpoint, this probably needs to go inside the loop
+        // TODO: If we base what block side we see on viewpoint, this probably needs to go inside the loop
         BlockPart blockPart;
         switch (displayAxisType) {
             case XZ_AXIS: // top down view
@@ -254,6 +222,8 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
             default:
                 throw new RuntimeException("displayAxisType containts invalid value");
         }
+
+        WorldProvider worldProvider = CoreRegistry.get(WorldProvider.class);
 
         for (int i = 0; i < blocksWide; i++) {
             for (int j = 0; j < blocksHigh; j++) {
@@ -377,6 +347,7 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
         //            drawGraphics.drawOval(drawLocationX-3, drawLocationY-3, 6, 6);;
         //        }
 
+        LocalPlayer localPlayer = CoreRegistry.get(LocalPlayer.class);
         for (EntityRef entityRef : entityManager.getEntitiesWith(CharacterComponent.class)) {
             if (entityRef.equals(localPlayer.getCharacterEntity())) {
                 // Don't currently care about the idea of a local player as a character
@@ -475,6 +446,21 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
         }
     }
 
+    private Vector3i getViewBlockLocation() {
+        LocalPlayer localPlayer = CoreRegistry.get(LocalPlayer.class);
+        Vector3f worldPosition = localPlayer.getPosition();
+
+        centerBlockPositionf = new Vector3f(worldPosition);
+        centerBlockPositionf.add(new Vector3f(cameraOffset.x, cameraOffset.y, cameraOffset.z));
+
+        Vector3i centerBlockPosition = new Vector3i(Math.round(worldPosition.x), Math.round(worldPosition.y), Math.round(worldPosition.z));
+        centerBlockPosition.add(cameraOffset);
+
+        //        centerBlockPositionf = new Vector3f(Math.round(centerBlockPosition.x), Math.round(centerBlockPosition.y), Math.round(centerBlockPosition.z));
+
+        return centerBlockPosition;
+    }
+
     Vector2i savedScreenLoc;
     Vector3f savedWorldLocation;
 
@@ -556,20 +542,6 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
             return chunk.getBlock(blockPos);
         }
         return null;
-    }
-
-    public void increaseViewingAxisOffset() {
-        viewingAxisOffset += 1;
-        if (viewingAxisOffset > (ChunkConstants.SIZE_Y - 1)) {
-            viewingAxisOffset = (ChunkConstants.SIZE_Y - 1);
-        }
-    }
-
-    public void decreaseViewingAxisOffset() {
-        viewingAxisOffset -= 1;
-        if (viewingAxisOffset < 0) {
-            viewingAxisOffset = 0;
-        }
     }
 
     public void toggleAxis() {
