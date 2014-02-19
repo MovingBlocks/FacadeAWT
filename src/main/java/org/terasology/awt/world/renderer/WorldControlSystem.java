@@ -4,6 +4,8 @@ import java.awt.Color;
 
 import javax.vecmath.Vector3f;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.terasology.asset.Assets;
 import org.terasology.awt.input.binds.ScrollBackwardButton;
 import org.terasology.awt.input.binds.ScrollDownButton;
@@ -32,7 +34,7 @@ import org.terasology.world.selection.BlockSelectionComponent;
 
 public class WorldControlSystem extends BaseComponentSystem {
 
-    // private static final Logger logger = LoggerFactory.getLogger(WorldControlSystem.class);
+    private static final Logger logger = LoggerFactory.getLogger(WorldControlSystem.class);
 
     private BlockTileWorldRenderer renderer;
 
@@ -40,7 +42,7 @@ public class WorldControlSystem extends BaseComponentSystem {
 
     public WorldControlSystem(BlockTileWorldRenderer renderer) {
         this.renderer = renderer;
-
+        logger.debug("blockSelectionEntity is " + blockSelectionEntity);
     }
 
     @Override
@@ -145,29 +147,39 @@ public class WorldControlSystem extends BaseComponentSystem {
                     blockSelectionComponent.texture = Assets.get(TextureUtil.getTextureUriForColor(transparentGreen), Texture.class);
 
                     blockSelectionEntity = entityManager.create(blockSelectionComponent);
+                    logger.debug("blockSelectionEntity created as  " + blockSelectionEntity + " with " + blockSelectionComponent);
+
                 } else {
                     blockSelectionComponent = blockSelectionEntity.getComponent(BlockSelectionComponent.class);
+                    logger.debug("blockSelectionEntity fetched from  " + blockSelectionEntity + " as " + blockSelectionComponent);
                 }
 
                 if (null == blockSelectionComponent.startPosition) {
+                    
                     blockSelectionComponent.startPosition = new Vector3i(worldPosition);
+                    blockSelectionComponent.shouldRender = true;
+                    logger.debug("blockSelectionComponent startPosition set to " + blockSelectionComponent.startPosition);
                 } else {
                     blockSelectionComponent.currentSelection = Region3i.createBounded(blockSelectionComponent.startPosition, new Vector3i(worldPosition));
+                    logger.debug("blockSelectionComponent currentSelection set to " + blockSelectionComponent.currentSelection);
                 }
             } else if (MouseInput.MOUSE_RIGHT == event.getButton()) {
                 if (EntityRef.NULL != blockSelectionEntity) {
                     BlockSelectionComponent blockSelectionComponent = blockSelectionEntity.getComponent(BlockSelectionComponent.class);
+                    logger.debug("right click: blockSelectionEntity fetched from  " + blockSelectionEntity + " as " + blockSelectionComponent);
                     if (null != blockSelectionComponent.currentSelection) {
                         blockSelectionEntity.send(new ApplyBlockSelectionEvent(EntityRef.NULL, blockSelectionComponent.currentSelection));
+                        logger.debug("right click: ApplyBlockSelectionEvent send for  " + blockSelectionComponent.currentSelection);
                     }
 
                     blockSelectionComponent.shouldRender = false;
                     blockSelectionComponent.currentSelection = null;
                     blockSelectionComponent.startPosition = null;
+                    logger.debug("right click: blockSelectionComponent cleared");
                 }
             }
-
-            event.consume();
         }
+
+        event.consume();
     }
 }
