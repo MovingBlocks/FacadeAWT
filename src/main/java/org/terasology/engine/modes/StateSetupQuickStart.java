@@ -1,4 +1,3 @@
-
 package org.terasology.engine.modes;
 
 import org.terasology.config.Config;
@@ -18,7 +17,7 @@ public class StateSetupQuickStart extends StateMainMenu {
     @Override
     public void init(GameEngine engine) {
         super.init(engine);
-        
+
         GameManifest gameManifest = new GameManifest();
 
         gameManifest.setTitle("quick-start");
