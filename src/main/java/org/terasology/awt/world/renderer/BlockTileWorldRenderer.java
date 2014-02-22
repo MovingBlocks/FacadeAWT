@@ -402,6 +402,7 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
             }
         }
 
+        // TODO: block selection rendering should be done by a separate system
         for (EntityRef entityRef : entityManager.getEntitiesWith(BlockSelectionComponent.class)) {
             BlockSelectionComponent blockSelectionComponent = entityRef.getComponent(BlockSelectionComponent.class);
             if (null != blockSelectionComponent) {
