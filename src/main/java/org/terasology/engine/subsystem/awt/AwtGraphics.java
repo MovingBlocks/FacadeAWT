@@ -119,7 +119,7 @@ public class AwtGraphics implements EngineSubsystem {
 
         AwtCanvasRenderer canvasRenderer = new AwtCanvasRenderer(mainFrame, awtDisplay);
 
-        NUIManagerInternal nuiManager = new NUIManagerInternal(assetManager, canvasRenderer);
+        NUIManagerInternal nuiManager = new NUIManagerInternal(canvasRenderer);
         CoreRegistry.putPermanently(NUIManager.class, nuiManager);
 
         //        CoreRegistry.putPermanently(DefaultRenderingProcess.class, new AwtRenderingProcess());

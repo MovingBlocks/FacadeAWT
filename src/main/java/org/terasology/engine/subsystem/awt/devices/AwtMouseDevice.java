@@ -15,12 +15,15 @@
  */
 package org.terasology.engine.subsystem.awt.devices;
 
+import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.MouseInfo;
 import java.awt.Point;
 import java.awt.PointerInfo;
+import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.awt.event.MouseMotionListener;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.util.HashMap;
@@ -34,134 +37,114 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.terasology.input.ButtonState;
 import org.terasology.input.InputType;
+import org.terasology.input.MouseInput;
 import org.terasology.input.device.InputAction;
 import org.terasology.input.device.MouseDevice;
 import org.terasology.math.Rect2i;
 import org.terasology.math.Vector2i;
 
+import com.google.common.collect.Maps;
 import com.google.common.collect.Queues;
 
 public class AwtMouseDevice implements MouseDevice {
     private static final Logger logger = LoggerFactory.getLogger(AwtMouseDevice.class);
 
-    private int lastMouseX;
-    private int lastMouseY;
-    private int deltaMouseX;
-    private int deltaMouseY;
-    private JFrame mainWindow;
+    private int mouseX;
+    private int mouseY;
+    private int prevMouseX;
+    private int prevMouseY;
 
-    private Map<Integer, Boolean> isDownByMouseButtonNumber = new HashMap<Integer, Boolean>(16);
+    private Map<MouseInput, Boolean> isDownByMouseButtonNumber = Maps.newHashMap();     // capacity 16
+    
     private Queue<InputAction> inputQueue = Queues.newArrayDeque();
     private Object inputQueueLock = new Object();
 
     public AwtMouseDevice(JFrame window) {
-        this.mainWindow = window;
-        Point mouseLocation = MouseInfo.getPointerInfo().getLocation();
-        lastMouseX = (int) mouseLocation.getX();
-        lastMouseY = (int) mouseLocation.getY();
+        
+        final Container contentPane = window.getContentPane();
+        contentPane.addMouseMotionListener(new MouseMotionListener() {
+            
+            @Override
+            public void mouseMoved(MouseEvent e) {
+                mouseX = e.getX();
+                mouseY = e.getY();
+            }
+            
+            @Override
+            public void mouseDragged(MouseEvent e) {
+                mouseX = e.getX();
+                mouseY = e.getY();
+            }
+        });
 
-        mainWindow.addMouseWheelListener(new MouseWheelListener() {
+        contentPane.addMouseWheelListener(new MouseWheelListener() {
 
             @Override
             public void mouseWheelMoved(MouseWheelEvent e) {
                 int wheelRotation = e.getWheelRotation();
-                //                if (Mouse.getEventDWheel() != 0) {
-                //                    int id = (Mouse.getEventDWheel() > 0) ? 1 : -1;
 
-                // TODO:  need to determine if wheel button is pressed
-                int id = 1;
-                InputAction event = new InputAction(InputType.MOUSE_WHEEL.getInput(id), id * wheelRotation / 120, getPosition());
+                MouseInput input = (wheelRotation < 0) ?
+                    MouseInput.WHEEL_UP :
+                    MouseInput.WHEEL_DOWN;
+                
+                // TODO: need to determine if wheel button is pressed
+                InputAction event = new InputAction(input, Math.abs(wheelRotation), getPosition());
                 synchronized (inputQueueLock) {
                     inputQueue.add(event);
                 }
-                //                }
             }
         });
 
-        mainWindow.addMouseListener(new MouseListener() {
+        contentPane.addMouseListener(new MouseAdapter() {
 
-            private int getMouseButtonNumberForMouseEvent(MouseEvent e) {
-                int buttonNumber = -1;
+            private MouseInput getMouseButtonNumberForMouseEvent(MouseEvent e) {
                 if (SwingUtilities.isLeftMouseButton(e)) {
-                    buttonNumber = 0;
+                    return MouseInput.MOUSE_LEFT;
                 } else if (SwingUtilities.isRightMouseButton(e)) {
-                    buttonNumber = 1;
+                    return MouseInput.MOUSE_RIGHT;
                 } else if (SwingUtilities.isMiddleMouseButton(e)) {
-                    buttonNumber = 2;
+                    return MouseInput.MOUSE_3;
                 } else {
                     logger.warn("Unsupported mouse button pressed.");
+                    return MouseInput.NONE;
                 }
-                return buttonNumber;
             }
 
             @Override
             public void mouseReleased(MouseEvent e) {
-                Vector2i mousePosition = getPosition();
-                Dimension contentPaneSize = mainWindow.getContentPane().getSize();
-                Rect2i contentPaneRect = Rect2i.createFromMinAndSize(0, 0, contentPaneSize.width, contentPaneSize.height);
-                if (! contentPaneRect.contains(mousePosition)) {
-                    return;
-                }
-                
-                int buttonNumber = getMouseButtonNumberForMouseEvent(e);
-                InputAction event = new InputAction(InputType.MOUSE_BUTTON.getInput(buttonNumber), ButtonState.UP, getPosition());
+                MouseInput input = getMouseButtonNumberForMouseEvent(e);
+                InputAction event = new InputAction(input, ButtonState.UP, getPosition());
                 synchronized (inputQueueLock) {
                     inputQueue.add(event);
                 }
-                isDownByMouseButtonNumber.put(buttonNumber, false);
+                isDownByMouseButtonNumber.put(input, Boolean.FALSE);
             }
 
             @Override
             public void mousePressed(MouseEvent e) {
-                Vector2i mousePosition = getPosition();
-                Dimension contentPaneSize = mainWindow.getContentPane().getSize();
-                Rect2i contentPaneRect = Rect2i.createFromMinAndSize(0, 0, contentPaneSize.width, contentPaneSize.height);
-                if (! contentPaneRect.contains(mousePosition)) {
-                    return;
-                }
-                
-                int buttonNumber = getMouseButtonNumberForMouseEvent(e);
-                InputAction event = new InputAction(InputType.MOUSE_BUTTON.getInput(buttonNumber), ButtonState.DOWN, getPosition());
+                MouseInput input = getMouseButtonNumberForMouseEvent(e);
+                InputAction event = new InputAction(input, ButtonState.DOWN, getPosition());
                 synchronized (inputQueueLock) {
                     inputQueue.add(event);
                 }
-                isDownByMouseButtonNumber.put(buttonNumber, true);
-            }
-
-            @Override
-            public void mouseExited(MouseEvent e) {
-            }
-
-            @Override
-            public void mouseEntered(MouseEvent e) {
-            }
-
-            @Override
-            public void mouseClicked(MouseEvent e) {
+                isDownByMouseButtonNumber.put(input, Boolean.TRUE);
             }
         });
     }
 
     @Override
     public Vector2i getPosition() {
-        PointerInfo pointerInfo = MouseInfo.getPointerInfo();
-        Point mouseLocation = pointerInfo.getLocation();
-        SwingUtilities.convertPointFromScreen(mouseLocation, mainWindow.getContentPane());
-        Vector2i v = new Vector2i((int) mouseLocation.getX(), (int) mouseLocation.getY());
-        return v;
+        return new Vector2i(mouseX, mouseY);
     }
 
     public void update(float delta) {
-        Point mouseLocation = MouseInfo.getPointerInfo().getLocation();
-        int newMouseX = (int) mouseLocation.getX();
-        int newMouseY = (int) mouseLocation.getY();
-        deltaMouseX = newMouseX - lastMouseX;
-        deltaMouseY = newMouseY - lastMouseY;
+        prevMouseX = mouseX;
+        prevMouseY = mouseY;
     }
 
     @Override
     public Vector2i getDelta() {
-        return new Vector2i(deltaMouseX, deltaMouseY);
+        return new Vector2i(mouseX - prevMouseX, mouseY - prevMouseY);
     }
 
     @Override
