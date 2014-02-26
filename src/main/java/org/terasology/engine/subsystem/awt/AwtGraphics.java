@@ -18,9 +18,13 @@ package org.terasology.engine.subsystem.awt;
 import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
+import java.awt.image.BufferedImage;
 
+import javax.imageio.ImageIO;
 import javax.swing.JFrame;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.terasology.asset.AssetFactory;
 import org.terasology.asset.AssetManager;
 import org.terasology.asset.AssetType;
@@ -76,6 +80,8 @@ import org.terasology.rendering.nui.internal.NUIManagerInternal;
 
 public class AwtGraphics implements EngineSubsystem {
 
+    private static final Logger log = LoggerFactory.getLogger(AwtGraphics.class);
+    
     private JFrame mainFrame;
     private AwtMouseDevice awtMouseDevice;
 
@@ -102,6 +108,18 @@ public class AwtGraphics implements EngineSubsystem {
         mainFrame.setUndecorated(false);
         mainFrame.setIgnoreRepaint(true);
 
+        try
+        {
+            String root = "org/terasology/icons/";
+            ClassLoader classLoader = getClass().getClassLoader();
+
+            BufferedImage icon32 = ImageIO.read(classLoader.getResourceAsStream(root + "gooey_sweet_32.png"));
+            mainFrame.setIconImage(icon32);
+        }
+        catch (Exception e) {
+            log.warn("Error loading icon", e);
+        }
+        
         mainFrame.setTitle("Terasology" + " | " + "Pre Alpha");
 
         AwtDisplayDevice awtDisplay = new AwtDisplayDevice(mainFrame);
