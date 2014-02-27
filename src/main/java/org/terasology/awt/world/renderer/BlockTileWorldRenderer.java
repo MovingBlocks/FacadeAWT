@@ -20,6 +20,7 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.ImageObserver;
+import java.math.RoundingMode;
 import java.util.Map;
 import java.util.Objects;
 
@@ -70,6 +71,7 @@ import org.terasology.world.chunks.internal.ChunkImpl;
 import org.terasology.world.selection.BlockSelectionComponent;
 
 import com.google.common.collect.Maps;
+import com.google.common.math.IntMath;
 
 public class BlockTileWorldRenderer extends AbstractWorldRenderer {
     private static final Logger logger = LoggerFactory.getLogger(BlockTileWorldRenderer.class);
@@ -126,8 +128,8 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
         AwtDisplayDevice displayDevice = (AwtDisplayDevice) CoreRegistry.get(DisplayDevice.class);
         Graphics drawGraphics = displayDevice.getDrawGraphics();
         drawGraphics.setColor(java.awt.Color.LIGHT_GRAY);
-        int width = displayDevice.mainFrame.getWidth();
-        int height = displayDevice.mainFrame.getHeight();
+        int width = displayDevice.getWidth();
+        int height = displayDevice.getHeight();
         drawGraphics.fillRect(0, 0, width, height);
 
         int scale = (int) (1f / zoomLevel);
@@ -161,11 +163,12 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
     Vector3f centerBlockPositionf;
 
     public void renderBlockTileWorld(Camera camera, Vector3i centerBlockPosition) {
+        
         AwtDisplayDevice displayDevice = (AwtDisplayDevice) CoreRegistry.get(DisplayDevice.class);
         Graphics drawGraphics = displayDevice.getDrawGraphics();
         Graphics2D drawGraphics2d = (Graphics2D) drawGraphics;
-        int width = displayDevice.mainFrame.getWidth();
-        int height = displayDevice.mainFrame.getHeight();
+        int width = displayDevice.getWidth();
+        int height = displayDevice.getHeight();
 
         InputSystem inputSystem = CoreRegistry.get(InputSystem.class);
         Vector2i mousePosition = inputSystem.getMouseDevice().getPosition();
@@ -176,15 +179,8 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
         blockTileWidth = (int) zoomLevel;
         blockTileHeight = (int) zoomLevel;
 
-        int blocksWide = width / blockTileWidth;
-        if (blocksWide * blockTileWidth < width) {
-            blocksWide++;
-        }
-
-        int blocksHigh = height / blockTileHeight;
-        if (blocksHigh * blockTileHeight < height) {
-            blocksHigh++;
-        }
+        int blocksWide = IntMath.divide(width, blockTileWidth, RoundingMode.CEILING);
+        int blocksHigh = IntMath.divide(height, blockTileHeight, RoundingMode.CEILING);
 
         mapCenterXf = ((blocksWide + 0.5f) / 2f);
         mapCenterYf = ((blocksHigh + 0.5f) / 2f);
@@ -220,7 +216,7 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
                 blockPart = BlockPart.FRONT; // todo: front/left/right/back needs to be picked base on viewpoint
                 break;
             default:
-                throw new RuntimeException("displayAxisType containts invalid value");
+                throw new IllegalStateException("displayAxisType is invalid");
         }
 
         WorldProvider worldProvider = CoreRegistry.get(WorldProvider.class);
@@ -228,16 +224,10 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
         for (int i = 0; i < blocksWide; i++) {
             for (int j = 0; j < blocksHigh; j++) {
 
-                Rect2i destinationArea = Rect2i.createFromMinAndSize(
-                        i * blockTileWidth,
-                        j * blockTileHeight,
-                        blockTileWidth,
-                        blockTileHeight);
-
-                int dx1 = destinationArea.minX();
-                int dy1 = destinationArea.minY();
-                int dx2 = destinationArea.maxX();
-                int dy2 = destinationArea.maxY();
+                int dx1 = i * blockTileWidth;
+                int dy1 = j * blockTileHeight;
+                int dx2 = dx1 + blockTileWidth - 1;
+                int dy2 = dy1 + blockTileHeight - 1;
 
                 Vector2i relativeCellLocation = new Vector2i((j - mapCenterY), (i - mapCenterX));
 

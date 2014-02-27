@@ -32,7 +32,7 @@ import org.terasology.registry.CoreRegistry;
 
 public class AwtDisplayDevice implements DisplayDevice {
 
-    public JFrame mainFrame;
+    private final JFrame mainFrame;
     private boolean isCloseRequested;
 
     private Graphics drawGraphics;
@@ -112,7 +112,17 @@ public class AwtDisplayDevice implements DisplayDevice {
 
         return drawGraphics;
     }
+    
+    public int getWidth() {
+        // mainFrame.getWidth() returns the height including borders
+        return mainFrame.getContentPane().getWidth();
+    }
 
+    public int getHeight() {
+        // mainFrame.getHeight() returns the height including borders
+        return mainFrame.getContentPane().getHeight();
+    }
+    
     public void show() {
         mainFrame.getBufferStrategy().show();
         drawGraphics.dispose();
