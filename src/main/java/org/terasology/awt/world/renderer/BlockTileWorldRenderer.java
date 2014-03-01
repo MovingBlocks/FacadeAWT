@@ -96,8 +96,7 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
     private Map<Block, BufferedImage> cachedImagesLeft = Maps.newHashMap();
     private Map<Block, BufferedImage> cachedImagesFront = Maps.newHashMap();
 
-    // Pixels per block
-    private float zoomLevel = 16;
+    private int zoomLevel = 6;
 
     private int depthsOfTransparency = 16;
     private float[] darken;
@@ -110,6 +109,7 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
     
     private EntityManager entityManager;
 
+    private LocalPlayer localPlayer;
     
     private enum RenderMode {
         IMAGE,
@@ -135,14 +135,16 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
         entityManager = CoreRegistry.get(EntityManager.class);
     }
 
+    @Override
+    public void setPlayer(LocalPlayer localPlayer) {
+        super.setPlayer(localPlayer);
+        this.localPlayer = localPlayer;
+    }
+    
     public void renderWorld(Camera camera) {
         Vector3i centerBlockPosition = getViewBlockLocation();
 
-        if (zoomLevel > 1) {
-            renderBlockTileWorld(camera, centerBlockPosition);
-        } else {
-            renderCityWorld(camera, centerBlockPosition);
-        }
+        renderBlockTileWorld(camera, centerBlockPosition);
     }
 
     private void renderCityWorld(Camera camera, Vector3i centerBlockPosition) {
@@ -195,7 +197,15 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
         
         int blocksWide = IntMath.divide(width, blockTileSize, RoundingMode.CEILING);
         int blocksHigh = IntMath.divide(height, blockTileSize, RoundingMode.CEILING);
-
+        
+        // update chunk production to cover the entire screen
+        ChunkProvider chunkProvider = getChunkProvider();
+        int chunksWide = blocksWide / ChunkConstants.SIZE_X;
+        int chunksHigh = blocksHigh / ChunkConstants.SIZE_Z;
+        int chunkDist = Math.max(chunksWide, chunksHigh);
+        EntityRef entity = localPlayer.getClientEntity();
+        chunkProvider.updateRelevanceEntity(entity, chunkDist);
+        
         RenderMode renderMode;
         if (blockTileSize == 1) {
             renderMode = RenderMode.POINT;
@@ -205,6 +215,7 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
             renderMode = RenderMode.IMAGE;
         }
         
+        // TODO: add camera coords.
         mapCenterXf = ((blocksWide + 0.5f) / 2f);
         mapCenterYf = ((blocksHigh + 0.5f) / 2f);
         
@@ -528,7 +539,7 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
      * @return
      */
     private int getBlockTileSize() {
-        return (int) zoomLevel;
+        return (int) 1 << (zoomLevel - 1);
     }
 
     private Vector3i getViewBlockLocation() {
@@ -649,11 +660,15 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
     }
 
     public void zoomIn() {
-        zoomLevel = zoomLevel * 2f;
+        if (zoomLevel < 7) {
+            zoomLevel++;
+        }
     }
 
     public void zoomOut() {
-        zoomLevel = zoomLevel / 2f;
+        if (zoomLevel > 1) {
+            zoomLevel--;
+        }
     }
 
 }
