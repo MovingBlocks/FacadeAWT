@@ -65,6 +65,7 @@ public class BufferedImageBuilder {
                 minX, minY, maxX, maxY,
                 texMinX, texMinY, texMaxX, texMaxY,
                 observer);
+        g.dispose();
     }
 
     public BufferedImage build() {
