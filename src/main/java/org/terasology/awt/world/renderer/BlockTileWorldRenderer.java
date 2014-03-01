@@ -15,14 +15,19 @@
  */
 package org.terasology.awt.world.renderer;
 
+import java.awt.AlphaComposite;
 import java.awt.BasicStroke;
+import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.GraphicsConfiguration;
+import java.awt.GraphicsEnvironment;
+import java.awt.RenderingHints;
+import java.awt.Transparency;
 import java.awt.image.BufferedImage;
 import java.awt.image.ImageObserver;
 import java.math.RoundingMode;
 import java.util.Map;
-import java.util.Objects;
 
 import javax.vecmath.Point2i;
 import javax.vecmath.Vector2f;
@@ -57,13 +62,11 @@ import org.terasology.rendering.assets.texture.BasicTextureRegion;
 import org.terasology.rendering.assets.texture.Texture;
 import org.terasology.rendering.assets.texture.TextureRegion;
 import org.terasology.rendering.cameras.Camera;
-import org.terasology.rendering.nui.Color;
 import org.terasology.world.WorldProvider;
 import org.terasology.world.block.Block;
 import org.terasology.world.block.BlockAppearance;
 import org.terasology.world.block.BlockManager;
 import org.terasology.world.block.BlockPart;
-import org.terasology.world.block.BlockUri;
 import org.terasology.world.block.loader.WorldAtlas;
 import org.terasology.world.chunks.ChunkConstants;
 import org.terasology.world.chunks.ChunkProvider;
@@ -74,7 +77,10 @@ import com.google.common.collect.Maps;
 import com.google.common.math.IntMath;
 
 public class BlockTileWorldRenderer extends AbstractWorldRenderer {
+
     private static final Logger logger = LoggerFactory.getLogger(BlockTileWorldRenderer.class);
+
+    private static final org.terasology.rendering.nui.Color WHITE = org.terasology.rendering.nui.Color.WHITE;
 
     private DisplayAxisType displayAxisType = DisplayAxisType.XZ_AXIS;
 
@@ -82,17 +88,35 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
 
     private Vector3i cameraOffset = new Vector3i();
 
-    // TODO: better to return source rect + image?
-    private Map<BufferedTileCacheKey, TextureRegion> cachedTiles = Maps.newHashMap();
+    private Map<Block, Color> cachedColorTop = Maps.newHashMap();
+    private Map<Block, Color> cachedColorLeft = Maps.newHashMap();
+    private Map<Block, Color> cachedColorFront = Maps.newHashMap();
+
+    private Map<Block, BufferedImage> cachedImagesTop = Maps.newHashMap();
+    private Map<Block, BufferedImage> cachedImagesLeft = Maps.newHashMap();
+    private Map<Block, BufferedImage> cachedImagesFront = Maps.newHashMap();
 
     // Pixels per block
     private float zoomLevel = 16;
 
-    private int depthsOfTransparency = 8;
+    private int depthsOfTransparency = 16;
     private float[] darken;
 
+    private Vector3f centerBlockPositionf;              // not sure, if these should really be class members
+    private float mapCenterYf;
+    private float mapCenterXf;
+    private Vector2i savedScreenLoc;
+    private Vector3f savedWorldLocation;
+    
     private EntityManager entityManager;
 
+    
+    private enum RenderMode {
+        IMAGE,
+        SQUARE,
+        POINT
+    }
+    
     public BlockTileWorldRenderer(WorldProvider worldProvider, ChunkProvider chunkProvider, LocalPlayerSystem localPlayerSystem) {
         super(worldProvider, chunkProvider, localPlayerSystem);
 
@@ -100,9 +124,6 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
 
         ComponentSystemManager componentSystemManager = CoreRegistry.get(ComponentSystemManager.class);
         componentSystemManager.register(new WorldControlSystem(this), "awt:WorldControlSystem");
-
-        float[] hsbvals = new float[3];
-        java.awt.Color.RGBtoHSB(255, 255, 255, hsbvals);
 
         darken = new float[depthsOfTransparency];
         darken[0] = 1f;
@@ -127,7 +148,7 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
     private void renderCityWorld(Camera camera, Vector3i centerBlockPosition) {
         AwtDisplayDevice displayDevice = (AwtDisplayDevice) CoreRegistry.get(DisplayDevice.class);
         Graphics drawGraphics = displayDevice.getDrawGraphics();
-        drawGraphics.setColor(java.awt.Color.LIGHT_GRAY);
+        drawGraphics.setColor(Color.LIGHT_GRAY);
         int width = displayDevice.getWidth();
         int height = displayDevice.getHeight();
         drawGraphics.fillRect(0, 0, width, height);
@@ -156,35 +177,37 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
         }
     }
 
-    int blockTileWidth;
-    int blockTileHeight;
-    float mapCenterXf;
-    float mapCenterYf;
-    Vector3f centerBlockPositionf;
-
     public void renderBlockTileWorld(Camera camera, Vector3i centerBlockPosition) {
         
         AwtDisplayDevice displayDevice = (AwtDisplayDevice) CoreRegistry.get(DisplayDevice.class);
-        Graphics drawGraphics = displayDevice.getDrawGraphics();
-        Graphics2D drawGraphics2d = (Graphics2D) drawGraphics;
+        Graphics g1 = displayDevice.getDrawGraphics();
+        Graphics2D g = (Graphics2D) g1;
         int width = displayDevice.getWidth();
         int height = displayDevice.getHeight();
 
         InputSystem inputSystem = CoreRegistry.get(InputSystem.class);
         Vector2i mousePosition = inputSystem.getMouseDevice().getPosition();
 
-        drawGraphics.setColor(java.awt.Color.BLACK);
-        drawGraphics.fillRect(0, 0, width, height);
+        g.setColor(Color.BLACK);
+        g.fillRect(0, 0, width, height);
 
-        blockTileWidth = (int) zoomLevel;
-        blockTileHeight = (int) zoomLevel;
+        int blockTileSize = getBlockTileSize();
+        
+        int blocksWide = IntMath.divide(width, blockTileSize, RoundingMode.CEILING);
+        int blocksHigh = IntMath.divide(height, blockTileSize, RoundingMode.CEILING);
 
-        int blocksWide = IntMath.divide(width, blockTileWidth, RoundingMode.CEILING);
-        int blocksHigh = IntMath.divide(height, blockTileHeight, RoundingMode.CEILING);
-
+        RenderMode renderMode;
+        if (blockTileSize == 1) {
+            renderMode = RenderMode.POINT;
+        } else if (blockTileSize <= 4) {
+            renderMode = RenderMode.SQUARE;
+        } else {
+            renderMode = RenderMode.IMAGE;
+        }
+        
         mapCenterXf = ((blocksWide + 0.5f) / 2f);
         mapCenterYf = ((blocksHigh + 0.5f) / 2f);
-
+        
         int mapCenterX = (int) ((blocksWide + 0.5f) / 2f);
         int mapCenterY = (int) ((blocksHigh + 0.5f) / 2f);
 
@@ -202,32 +225,44 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
             default:
                 throw new RuntimeException("illegal displayAxisType " + displayAxisType);
         }
-
+        
         // TODO: If we base what block side we see on viewpoint, this probably needs to go inside the loop
         BlockPart blockPart;
+        Map<Block, Color> cachedColor;
+        Map<Block, BufferedImage> cachedImages;
         switch (displayAxisType) {
             case XZ_AXIS: // top down view
                 blockPart = BlockPart.TOP;
+                cachedColor = cachedColorTop;
+                cachedImages = cachedImagesTop;
                 break;
             case YZ_AXIS:
                 blockPart = BlockPart.LEFT; // todo: front/left/right/back needs to be picked base on viewpoint
+                cachedColor = cachedColorLeft;
+                cachedImages = cachedImagesLeft;
                 break;
             case XY_AXIS:
                 blockPart = BlockPart.FRONT; // todo: front/left/right/back needs to be picked base on viewpoint
+                cachedColor = cachedColorFront;
+                cachedImages = cachedImagesFront;
                 break;
             default:
                 throw new IllegalStateException("displayAxisType is invalid");
         }
-
+        
+//        cachedImages.clear();
+//        cachedColor.clear();
+        
         WorldProvider worldProvider = CoreRegistry.get(WorldProvider.class);
+        WorldAtlas worldAtlas = CoreRegistry.get(WorldAtlas.class);
+        float tileSize = worldAtlas.getRelativeTileSize();
+        float prevAlpha = -1;
 
         for (int i = 0; i < blocksWide; i++) {
             for (int j = 0; j < blocksHigh; j++) {
 
-                int dx1 = i * blockTileWidth;
-                int dy1 = j * blockTileHeight;
-                int dx2 = dx1 + blockTileWidth - 1;
-                int dy2 = dy1 + blockTileHeight - 1;
+                int dx1 = i * blockTileSize;
+                int dy1 = j * blockTileSize;
 
                 Vector2i relativeCellLocation = new Vector2i((j - mapCenterY), (i - mapCenterX));
 
@@ -260,51 +295,103 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
                     }
 
                     // let it remain black if nothing is there
-                    if (!BlockManager.getAir().equals(block)) {
+                    if (block != null && !BlockManager.getAir().equals(block)) {
 
-                        BlockUri blockUri = block.getURI();
-                        BlockAppearance primaryAppearance = block.getPrimaryAppearance();
-
-                        BufferedTileCacheKey key = new BufferedTileCacheKey(blockUri, blockPart);
-                        TextureRegion textureRegion = cachedTiles.get(key);
-                        if (null == textureRegion) {
-                            WorldAtlas worldAtlas = CoreRegistry.get(WorldAtlas.class);
-                            float tileSize = worldAtlas.getRelativeTileSize();
-
-                            Vector2f textureAtlasPos = primaryAppearance.getTextureAtlasPos(blockPart);
-
-                            textureRegion = new BasicTextureRegion(textureAtlas, textureAtlasPos, new Vector2f(tileSize, tileSize));
-                            cachedTiles.put(key, textureRegion);
+                        Color blockColor = null;
+                        BufferedImage blockImage = null;
+                        
+                        if (renderMode == RenderMode.POINT || renderMode == RenderMode.SQUARE) {
+                            blockColor = cachedColor.get(block);
                         }
 
-                        Texture texture = textureRegion.getTexture();
-                        AwtTexture awtTexture = (AwtTexture) texture;
+                        if (renderMode == RenderMode.IMAGE || blockColor == null) {
+                            blockImage = cachedImages.get(block);
+                            
+                            if (null == blockImage) {
+    
+                                BlockAppearance primaryAppearance = block.getPrimaryAppearance();
+                                Vector2f textureAtlasPos = primaryAppearance.getTextureAtlasPos(blockPart);
+    
+                                Vector2f size = new Vector2f(tileSize, tileSize);
+                                TextureRegion textureRegion = new BasicTextureRegion(textureAtlas, textureAtlasPos, size);
+                                Rect2i pixelRegion = textureRegion.getPixelRegion();
+                                
+                                int sx1 = pixelRegion.minX();
+                                int sy1 = pixelRegion.minY();
+                                int sx2 = sx1 + pixelRegion.width();    // Surprisingly, maxX() is not minX + width()
+                                int sy2 = sy1 + pixelRegion.height();
+        
+                                Texture texture = textureRegion.getTexture();
+                                AwtTexture awtTexture = (AwtTexture) texture;
+                                BufferedImage fullImage = awtTexture.getBufferedImage(texture.getWidth(), texture.getHeight(), 1f, WHITE);
+                                
+                                GraphicsConfiguration gc = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration();
 
-                        BufferedImage bufferedImage = awtTexture.getBufferedImage(texture.getWidth(), texture.getHeight(), alpha, Color.WHITE);
+                                int w = pixelRegion.width();
+                                int h = pixelRegion.height();
+                                blockImage = gc.createCompatibleImage(w, h, Transparency.TRANSLUCENT);
+                                BufferedImage tiny = gc.createCompatibleImage(1, 1, Transparency.TRANSLUCENT);
 
-                        Rect2i pixelRegion = textureRegion.getPixelRegion();
+                                ImageObserver observer = null;
 
-                        int sx1 = pixelRegion.minX();
-                        int sy1 = pixelRegion.minY();
-                        int sx2 = pixelRegion.maxX();
-                        int sy2 = pixelRegion.maxY();
+                                Graphics2D bg = (Graphics2D) blockImage.getGraphics();
+                                bg.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+                                bg.drawImage(fullImage, 0, 0, w, h, sx1, sy1, sx2, sy2, observer);
+                                bg.dispose();
+                                
+                                cachedImages.put(block, blockImage);
 
-                        ImageObserver observer = null;
+                                Graphics2D tg = (Graphics2D) tiny.getGraphics();
+                                tg.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+                                tg.drawImage(fullImage, 0, 0, 1, 1, sx1, sy1, sx2, sy2, observer);
+                                tg.dispose();
 
-                        drawGraphics.drawImage(bufferedImage, dx1, dy1, dx2, dy2, sx1, sy1, sx2, sy2, observer);
+                                // I think this is correct, but the color appears to be darker than the average color of the original image
+                                blockColor = new Color(tiny.getRGB(0, 0));
+                                cachedColor.put(block, blockColor);
+                            }
+    
+                        }
+
+                        if (alpha != prevAlpha) {
+                            g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
+                        }
+                        
+                        if (renderMode == RenderMode.POINT || renderMode == RenderMode.SQUARE) {
+                            int red = (int) (blockColor.getRed() * alpha);
+                            int green = (int) (blockColor.getGreen() * alpha);
+                            int blue = (int) (blockColor.getBlue() * alpha);
+                            blockColor = new Color(red, green, blue);
+
+                            g.setColor(blockColor);
+
+                            if (renderMode == RenderMode.SQUARE) {
+                                g.fillRect(dx1, dy1, blockTileSize, blockTileSize);
+                            } else {
+                                g.drawLine(dx1, dy1, dx1, dy1);
+                            }
+                        }
+                        else {
+                            ImageObserver observer = null;
+                            g.drawImage(blockImage, dx1, dy1, blockTileSize, blockTileSize, observer);
+                        }
                     }
+                    
+                    prevAlpha = alpha;
                 }
-
+                
                 if (relativeCellLocation.x == 0 && relativeCellLocation.y == 0) {
-                    drawGraphics.setColor(java.awt.Color.WHITE);
-                    drawGraphics2d.setStroke(new BasicStroke(2));
-                    drawGraphics.drawRect(dx1, dy1, blockTileWidth, blockTileHeight);
+                    g.setColor(Color.WHITE);
+                    g.setStroke(new BasicStroke(2));
+                    g.drawRect(dx1, dy1, blockTileSize, blockTileSize);
                 }
             }
         }
 
+        g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f));
+        
         //      if (null != savedScreenLoc) {
-        //      drawGraphics.setColor(java.awt.Color.WHITE);
+        //      drawGraphics.setColor(Color.WHITE);
         //      drawGraphics2d.setStroke(new BasicStroke(2));
         //      drawGraphics.drawOval(savedScreenLoc.x - 4, savedScreenLoc.y - 4, 8, 8);
         //  }
@@ -332,7 +419,7 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
         //            int drawLocationX = Math.round((screenLocation.x + mapCenterXf) * blockTileWidth);
         //            int drawLocationY = Math.round((screenLocation.y + mapCenterYf) * blockTileHeight);
         //
-        //            drawGraphics.setColor(java.awt.Color.RED);
+        //            drawGraphics.setColor(Color.RED);
         //            drawGraphics2d.setStroke(new BasicStroke(1));
         //            drawGraphics.drawOval(drawLocationX-3, drawLocationY-3, 6, 6);;
         //        }
@@ -359,14 +446,14 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
                     if (null != textureRegion) {
                         AwtTexture awtTexture = (AwtTexture) textureRegion.getTexture();
 
-                        BufferedImage bufferedImage = awtTexture.getBufferedImage(awtTexture.getWidth(), awtTexture.getHeight(), 1f, Color.WHITE);
+                        BufferedImage bufferedImage = awtTexture.getBufferedImage(awtTexture.getWidth(), awtTexture.getHeight(), 1f, WHITE);
 
                         Rect2i pixelRegion = textureRegion.getPixelRegion();
 
                         Vector2i drawLocation = getScreenLocation(locationComponent.getWorldPosition());
 
                         Rect2i destRect = Rect2i.createFromMinAndSize(drawLocation.x - (pixelRegion.width() / 2), drawLocation.y - (pixelRegion.height() / 2),
-                                pixelRegion.width() / 32 * blockTileWidth, pixelRegion.height() / 32 * blockTileHeight);
+                                pixelRegion.width() / 32 * blockTileSize, pixelRegion.height() / 32 * blockTileSize);
 
                         int destx1 = destRect.minX();
                         int desty1 = destRect.minY();
@@ -380,7 +467,7 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
 
                         ImageObserver observer = null;
 
-                        drawGraphics.drawImage(bufferedImage, destx1, desty1, destx2, desty2, sx1, sy1, sx2, sy2, observer);
+                        g.drawImage(bufferedImage, destx1, desty1, destx2, desty2, sx1, sy1, sx2, sy2, observer);
                     } else {
                         logger.info("Need to render " + displayName + ": no itemComponent.icon");
                     }
@@ -408,7 +495,7 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
                         }
 
                         AwtTexture awtTexture = (AwtTexture) textureRegion.getTexture();
-                        BufferedImage bufferedImage = awtTexture.getBufferedImage(awtTexture.getWidth(), awtTexture.getHeight(), 1f, Color.WHITE);
+                        BufferedImage bufferedImage = awtTexture.getBufferedImage(awtTexture.getWidth(), awtTexture.getHeight(), 1f, WHITE);
                         Rect2i pixelRegion = textureRegion.getPixelRegion();
 
                         int destx1 = rect.minX();
@@ -423,18 +510,25 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
 
                         ImageObserver observer = null;
 
-                        drawGraphics.drawImage(bufferedImage, destx1, desty1, destx2, desty2, sx1, sy1, sx2, sy2, observer);
+                        g.drawImage(bufferedImage, destx1, desty1, destx2, desty2, sx1, sy1, sx2, sy2, observer);
                     } else {
                         Vector2i drawLocation1 = getScreenLocation(blockSelectionComponent.startPosition);
                         Rect2i rect = Rect2i.createEncompassing(drawLocation1, mousePosition);
 
-                        drawGraphics2d.setStroke(new BasicStroke(1));
-                        drawGraphics.setColor(java.awt.Color.WHITE);
-                        drawGraphics.drawRect(rect.minX(), rect.minY(), rect.width(), rect.height());
+                        g.setStroke(new BasicStroke(1));
+                        g.setColor(Color.WHITE);
+                        g.drawRect(rect.minX(), rect.minY(), rect.width(), rect.height());
                     }
                 }
             }
         }
+    }
+
+    /**
+     * @return
+     */
+    private int getBlockTileSize() {
+        return (int) zoomLevel;
     }
 
     private Vector3i getViewBlockLocation() {
@@ -451,9 +545,6 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
 
         return centerBlockPosition;
     }
-
-    Vector2i savedScreenLoc;
-    Vector3f savedWorldLocation;
 
     public Vector2i getScreenLocation(Vector3i worldLocation) {
         return getScreenLocation(new Vector3f(worldLocation.x, worldLocation.y, worldLocation.z));
@@ -477,9 +568,11 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
             default:
                 throw new RuntimeException("displayAxisType containts invalid value");
         }
+        
+        int blockTileSize = getBlockTileSize();
 
-        int drawLocationX = Math.round((screenLocation.x + mapCenterXf) * blockTileWidth);
-        int drawLocationY = Math.round((screenLocation.y + mapCenterYf) * blockTileHeight);
+        int drawLocationX = Math.round((screenLocation.x + mapCenterXf) * blockTileSize);
+        int drawLocationY = Math.round((screenLocation.y + mapCenterYf) * blockTileSize);
         Vector2i drawLocation = new Vector2i(drawLocationX, drawLocationY);
         return drawLocation;
     }
@@ -488,9 +581,11 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
 
         savedScreenLoc = mousePosition;
 
+        int blockTileSize = getBlockTileSize();
+        
         Vector2f screenLocation = new Vector2f(
-                ((float) mousePosition.x) / ((float) blockTileWidth) - mapCenterXf,
-                ((float) mousePosition.y) / ((float) blockTileHeight) - mapCenterYf);
+                ((float) mousePosition.x) / ((float) blockTileSize) - mapCenterXf,
+                ((float) mousePosition.y) / ((float) blockTileSize) - mapCenterYf);
 
         Vector3f relativeEntityWorldPosition;
         switch (displayAxisType) {
@@ -546,35 +641,6 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
             case YZ_AXIS:
                 displayAxisType = DisplayAxisType.XY_AXIS;
                 break;
-        }
-    }
-
-    public class BufferedTileCacheKey {
-        private BlockUri blockUri;
-        private BlockPart blockPart;
-
-        public BufferedTileCacheKey(BlockUri blockUri, BlockPart blockPart) {
-            super();
-            this.blockUri = blockUri;
-            this.blockPart = blockPart;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            }
-            if (obj instanceof BufferedTileCacheKey) {
-                BufferedTileCacheKey other = (BufferedTileCacheKey) obj;
-                return Objects.equals(blockUri, other.blockUri)
-                       && Objects.equals(blockPart, other.blockPart);
-            }
-            return false;
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(blockUri, blockPart);
         }
     }
 
