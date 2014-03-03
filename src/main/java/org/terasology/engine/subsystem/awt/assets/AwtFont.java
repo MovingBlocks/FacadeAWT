@@ -79,6 +79,7 @@ public class AwtFont extends AbstractAsset<FontData> implements org.terasology.r
             width = Math.max(width, (int) stringBounds.getWidth());
             height += stringBounds.getHeight();
         }
+        g2.dispose();
         return new Vector2i(width, height);
     }
 
@@ -96,7 +97,7 @@ public class AwtFont extends AbstractAsset<FontData> implements org.terasology.r
             int currentWidth = (int) stringBounds.getWidth();
             largestWidth = Math.max(largestWidth, currentWidth);
         }
-
+        g2.dispose();
         return largestWidth;
     }
 
@@ -107,11 +108,13 @@ public class AwtFont extends AbstractAsset<FontData> implements org.terasology.r
         g2.setFont(getAwtFont());
         FontMetrics fontMetrics = g2.getFontMetrics();
 
+        int width = 0;
         if (c != null) {
             Rectangle2D stringBounds = fontMetrics.getStringBounds(Character.valueOf(c).toString(), g2);
-            return (int) stringBounds.getWidth();
+            width = (int) stringBounds.getWidth();
         }
-        return 0;
+        g2.dispose();
+        return width;
     }
 
     @Override
@@ -127,6 +130,7 @@ public class AwtFont extends AbstractAsset<FontData> implements org.terasology.r
                 height += fontMetrics.getHeight();
             }
         }
+        g2.dispose();
         return height;
     }
 
@@ -137,7 +141,10 @@ public class AwtFont extends AbstractAsset<FontData> implements org.terasology.r
         g2.setFont(getAwtFont());
         FontMetrics fontMetrics = g2.getFontMetrics();
 
-        return fontMetrics.getHeight();
+        int height = fontMetrics.getHeight();
+        g2.dispose();
+
+        return height;
     }
 
     public Font getAwtFont() {
