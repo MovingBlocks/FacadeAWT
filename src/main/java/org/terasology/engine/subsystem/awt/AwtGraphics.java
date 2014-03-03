@@ -78,6 +78,8 @@ import org.terasology.rendering.assets.texture.subtexture.SubtextureFromAtlasRes
 import org.terasology.rendering.nui.NUIManager;
 import org.terasology.rendering.nui.internal.NUIManagerInternal;
 
+import com.google.common.collect.ImmutableList;
+
 public class AwtGraphics implements EngineSubsystem {
 
     private static final Logger log = LoggerFactory.getLogger(AwtGraphics.class);
@@ -113,8 +115,11 @@ public class AwtGraphics implements EngineSubsystem {
             String root = "org/terasology/icons/";
             ClassLoader classLoader = getClass().getClassLoader();
 
-            BufferedImage icon32 = ImageIO.read(classLoader.getResourceAsStream(root + "gooey_sweet_32.png"));
-            mainFrame.setIconImage(icon32);
+            BufferedImage icon16 = ImageIO.read(classLoader.getResourceAsStream(root + "bluegoo_16.png"));
+            BufferedImage icon32 = ImageIO.read(classLoader.getResourceAsStream(root + "bluegoo_32.png"));
+            BufferedImage icon64 = ImageIO.read(classLoader.getResourceAsStream(root + "bluegoo_64.png"));
+            BufferedImage icon128 = ImageIO.read(classLoader.getResourceAsStream(root + "bluegoo_128.png"));
+            mainFrame.setIconImages(ImmutableList.of(icon16, icon32, icon64, icon128));
         }
         catch (Exception e) {
             log.warn("Error loading icon", e);
