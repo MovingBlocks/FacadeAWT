@@ -386,9 +386,9 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
                             ImageObserver observer = null;
                             g.drawImage(blockImage, dx1, dy1, blockTileSize, blockTileSize, observer);
                         }
+
+                        prevAlpha = alpha;
                     }
-                    
-                    prevAlpha = alpha;
                 }
                 
                 if (relativeCellLocation.x == 0 && relativeCellLocation.y == 0) {
