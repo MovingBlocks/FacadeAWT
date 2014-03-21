@@ -1,7 +1,5 @@
 package org.terasology.awt.world.renderer;
 
-import java.awt.Color;
-
 import javax.vecmath.Vector3f;
 
 import org.slf4j.Logger;
@@ -30,6 +28,7 @@ import org.terasology.network.ClientComponent;
 import org.terasology.registry.CoreRegistry;
 import org.terasology.rendering.assets.texture.Texture;
 import org.terasology.rendering.assets.texture.TextureUtil;
+import org.terasology.rendering.nui.Color;
 import org.terasology.world.selection.BlockSelectionComponent;
 
 public class WorldControlSystem extends BaseComponentSystem {
