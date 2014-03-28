@@ -25,6 +25,10 @@ import org.terasology.audio.AudioManager;
 import org.terasology.config.Config;
 import org.terasology.engine.ComponentSystemManager;
 import org.terasology.engine.subsystem.headless.renderer.NullCamera;
+import org.terasology.entitySystem.entity.EntityRef;
+import org.terasology.logic.characters.CharacterComponent;
+import org.terasology.logic.characters.CharacterMovementComponent;
+import org.terasology.logic.location.LocationComponent;
 import org.terasology.logic.players.LocalPlayer;
 import org.terasology.logic.players.LocalPlayerSystem;
 import org.terasology.math.AABB;
@@ -63,6 +67,7 @@ public abstract class AbstractWorldRenderer implements WorldRenderer {
     private final BulletPhysics bulletPhysics;
 
     private Camera localPlayerCamera;
+    private Camera activeViewCamera;
 
     private Config config;
 
@@ -73,6 +78,8 @@ public abstract class AbstractWorldRenderer implements WorldRenderer {
 
         config = CoreRegistry.get(Config.class);
         CoreRegistry.get(ComponentSystemManager.class).register(new WorldCommands(chunkProvider));
+
+        activeViewCamera = new NullCamera();
 
         localPlayerCamera = new NullCamera();
         localPlayerSystem.setPlayerCamera(localPlayerCamera);
@@ -95,7 +102,7 @@ public abstract class AbstractWorldRenderer implements WorldRenderer {
 
     @Override
     public Camera getActiveCamera() {
-        return localPlayerCamera;
+        return activeViewCamera;
     }
 
     @Override

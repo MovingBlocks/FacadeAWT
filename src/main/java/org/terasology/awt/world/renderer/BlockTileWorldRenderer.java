@@ -53,6 +53,7 @@ import org.terasology.logic.inventory.ItemComponent;
 import org.terasology.logic.location.LocationComponent;
 import org.terasology.logic.players.LocalPlayer;
 import org.terasology.logic.players.LocalPlayerSystem;
+import org.terasology.math.Rect2f;
 import org.terasology.math.Rect2i;
 import org.terasology.math.TeraMath;
 import org.terasology.math.Vector2i;
@@ -62,6 +63,7 @@ import org.terasology.rendering.assets.texture.BasicTextureRegion;
 import org.terasology.rendering.assets.texture.Texture;
 import org.terasology.rendering.assets.texture.TextureRegion;
 import org.terasology.rendering.cameras.Camera;
+import org.terasology.rendering.nui.NUIManager;
 import org.terasology.world.WorldProvider;
 import org.terasology.world.block.Block;
 import org.terasology.world.block.BlockAppearance;
@@ -86,8 +88,6 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
 
     private Texture textureAtlas;
 
-    private Vector3i cameraOffset = new Vector3i();
-
     private Map<Block, Color> cachedColorTop = Maps.newHashMap();
     private Map<Block, Color> cachedColorLeft = Maps.newHashMap();
     private Map<Block, Color> cachedColorFront = Maps.newHashMap();
@@ -106,24 +106,26 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
     private float mapCenterXf;
     private Vector2i savedScreenLoc;
     private Vector3f savedWorldLocation;
-    
+
     private EntityManager entityManager;
 
     private LocalPlayer localPlayer;
-    
+
     private enum RenderMode {
         IMAGE,
         SQUARE,
         POINT
     }
-    
+
     public BlockTileWorldRenderer(WorldProvider worldProvider, ChunkProvider chunkProvider, LocalPlayerSystem localPlayerSystem) {
         super(worldProvider, chunkProvider, localPlayerSystem);
 
         textureAtlas = Assets.getTexture("engine:terrain");
 
         ComponentSystemManager componentSystemManager = CoreRegistry.get(ComponentSystemManager.class);
-        componentSystemManager.register(new WorldControlSystem(this), "awt:WorldControlSystem");
+        WorldControlSystem worldControlSystem = new WorldControlSystem(this);
+        componentSystemManager.register(worldControlSystem, "awt:WorldControlSystem");
+        CoreRegistry.put(WorldControlSystem.class, worldControlSystem);
 
         darken = new float[depthsOfTransparency];
         darken[0] = 1f;
@@ -133,14 +135,29 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
         }
 
         entityManager = CoreRegistry.get(EntityManager.class);
+
+        // Must assign here, so that we are the first HUD element assigned to the NUI HUD manager to assure
+        // that we are the last consumer of mouse events
+        WorldSelectionScreen worldSelectionScreen = CoreRegistry.get(NUIManager.class).getHUD()
+                .addHUDElement("engine:worldSelectionScreen", WorldSelectionScreen.class, Rect2f.createFromMinAndSize(0, 0, 1, 1));
+        worldSelectionScreen.setRenderer(this);
     }
 
     @Override
     public void setPlayer(LocalPlayer localPlayer) {
         super.setPlayer(localPlayer);
         this.localPlayer = localPlayer;
+
+        // Make our active camera match the starting local player location rather than try to control local player location directly
+        EntityRef entity = localPlayer.getCharacterEntity();
+        CharacterComponent characterComponent = entity.getComponent(CharacterComponent.class);
+        LocationComponent location = entity.getComponent(LocationComponent.class);
+
+        Vector3f cameraPosition = new Vector3f();
+        cameraPosition.add(new Vector3f(location.getWorldPosition()), new Vector3f(0, characterComponent.eyeOffset, 0));
+        getActiveCamera().getPosition().set(cameraPosition);
     }
-    
+
     public void renderWorld(Camera camera) {
         Vector3i centerBlockPosition = getViewBlockLocation();
 
@@ -180,7 +197,7 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
     }
 
     public void renderBlockTileWorld(Camera camera, Vector3i centerBlockPosition) {
-        
+
         AwtDisplayDevice displayDevice = (AwtDisplayDevice) CoreRegistry.get(DisplayDevice.class);
         Graphics g1 = displayDevice.getDrawGraphics();
         Graphics2D g = (Graphics2D) g1;
@@ -194,10 +211,10 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
         g.fillRect(0, 0, width, height);
 
         int blockTileSize = getBlockTileSize();
-        
+
         int blocksWide = IntMath.divide(width, blockTileSize, RoundingMode.CEILING);
         int blocksHigh = IntMath.divide(height, blockTileSize, RoundingMode.CEILING);
-        
+
         // update chunk production to cover the entire screen
         ChunkProvider chunkProvider = getChunkProvider();
         int chunksWide = blocksWide / ChunkConstants.SIZE_X;
@@ -205,7 +222,7 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
         int chunkDist = Math.max(chunksWide, chunksHigh);
         EntityRef entity = localPlayer.getClientEntity();
         chunkProvider.updateRelevanceEntity(entity, chunkDist);
-        
+
         RenderMode renderMode;
         if (blockTileSize == 1) {
             renderMode = RenderMode.POINT;
@@ -214,11 +231,11 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
         } else {
             renderMode = RenderMode.IMAGE;
         }
-        
+
         // TODO: add camera coords.
         mapCenterXf = ((blocksWide + 0.5f) / 2f);
         mapCenterYf = ((blocksHigh + 0.5f) / 2f);
-        
+
         int mapCenterX = (int) ((blocksWide + 0.5f) / 2f);
         int mapCenterY = (int) ((blocksHigh + 0.5f) / 2f);
 
@@ -236,7 +253,7 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
             default:
                 throw new RuntimeException("illegal displayAxisType " + displayAxisType);
         }
-        
+
         // TODO: If we base what block side we see on viewpoint, this probably needs to go inside the loop
         BlockPart blockPart;
         Map<Block, Color> cachedColor;
@@ -260,10 +277,10 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
             default:
                 throw new IllegalStateException("displayAxisType is invalid");
         }
-        
-//        cachedImages.clear();
-//        cachedColor.clear();
-        
+
+        //        cachedImages.clear();
+        //        cachedColor.clear();
+
         WorldProvider worldProvider = CoreRegistry.get(WorldProvider.class);
         WorldAtlas worldAtlas = CoreRegistry.get(WorldAtlas.class);
         float tileSize = worldAtlas.getRelativeTileSize();
@@ -310,32 +327,32 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
 
                         Color blockColor = null;
                         BufferedImage blockImage = null;
-                        
+
                         if (renderMode == RenderMode.POINT || renderMode == RenderMode.SQUARE) {
                             blockColor = cachedColor.get(block);
                         }
 
                         if (renderMode == RenderMode.IMAGE || blockColor == null) {
                             blockImage = cachedImages.get(block);
-                            
+
                             if (null == blockImage) {
-    
+
                                 BlockAppearance primaryAppearance = block.getPrimaryAppearance();
                                 Vector2f textureAtlasPos = primaryAppearance.getTextureAtlasPos(blockPart);
-    
+
                                 Vector2f size = new Vector2f(tileSize, tileSize);
                                 TextureRegion textureRegion = new BasicTextureRegion(textureAtlas, textureAtlasPos, size);
                                 Rect2i pixelRegion = textureRegion.getPixelRegion();
-                                
+
                                 int sx1 = pixelRegion.minX();
                                 int sy1 = pixelRegion.minY();
                                 int sx2 = sx1 + pixelRegion.width();    // Surprisingly, maxX() is not minX + width()
                                 int sy2 = sy1 + pixelRegion.height();
-        
+
                                 Texture texture = textureRegion.getTexture();
                                 AwtTexture awtTexture = (AwtTexture) texture;
                                 BufferedImage fullImage = awtTexture.getBufferedImage(texture.getWidth(), texture.getHeight(), 1f, WHITE);
-                                
+
                                 GraphicsConfiguration gc = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration();
 
                                 int w = pixelRegion.width();
@@ -349,7 +366,7 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
                                 bg.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
                                 bg.drawImage(fullImage, 0, 0, w, h, sx1, sy1, sx2, sy2, observer);
                                 bg.dispose();
-                                
+
                                 cachedImages.put(block, blockImage);
 
                                 Graphics2D tg = (Graphics2D) tiny.getGraphics();
@@ -361,13 +378,13 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
                                 blockColor = new Color(tiny.getRGB(0, 0));
                                 cachedColor.put(block, blockColor);
                             }
-    
+
                         }
 
                         if (alpha != prevAlpha) {
                             g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
                         }
-                        
+
                         if (renderMode == RenderMode.POINT || renderMode == RenderMode.SQUARE) {
                             int red = (int) (blockColor.getRed() * alpha);
                             int green = (int) (blockColor.getGreen() * alpha);
@@ -390,7 +407,7 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
                         prevAlpha = alpha;
                     }
                 }
-                
+
                 if (relativeCellLocation.x == 0 && relativeCellLocation.y == 0) {
                     g.setColor(Color.WHITE);
                     g.setStroke(new BasicStroke(2));
@@ -400,41 +417,48 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
         }
 
         g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f));
-        
-        //      if (null != savedScreenLoc) {
-        //      drawGraphics.setColor(Color.WHITE);
-        //      drawGraphics2d.setStroke(new BasicStroke(2));
-        //      drawGraphics.drawOval(savedScreenLoc.x - 4, savedScreenLoc.y - 4, 8, 8);
-        //  }
 
-        //        if (null != savedWorldLocation)
-        //        {
-        //            Vector3f relativeEntityWorldPosition = new Vector3f(savedWorldLocation);
-        //            relativeEntityWorldPosition.sub(centerBlockPositionf);
-        //            
-        //            Vector2f screenLocation;
-        //            switch (displayAxisType) {
-        //                case XZ_AXIS: // top down view
-        //                    screenLocation = new Vector2f(relativeEntityWorldPosition.z, -relativeEntityWorldPosition.x);
-        //                    break;
-        //                case YZ_AXIS:
-        //                    screenLocation = new Vector2f(relativeEntityWorldPosition.z, relativeEntityWorldPosition.y);
-        //                    break;
-        //                case XY_AXIS:
-        //                    screenLocation = new Vector2f(relativeEntityWorldPosition.x, relativeEntityWorldPosition.y);
-        //                    break;
-        //                default:
-        //                    throw new RuntimeException("displayAxisType containts invalid value");
-        //            }
-        //            
-        //            int drawLocationX = Math.round((screenLocation.x + mapCenterXf) * blockTileWidth);
-        //            int drawLocationY = Math.round((screenLocation.y + mapCenterYf) * blockTileHeight);
-        //
-        //            drawGraphics.setColor(Color.RED);
-        //            drawGraphics2d.setStroke(new BasicStroke(1));
-        //            drawGraphics.drawOval(drawLocationX-3, drawLocationY-3, 6, 6);;
-        //        }
+        drawCharacterEntities(g, blockTileSize);
+        drawBlockSelection(g, mousePosition);
+    }
 
+    //    public void testMouseHit(Graphics2D g, int blockTileWidth, int blockTileHeight) {
+    //        if (null != savedScreenLoc) {
+    //            g.setColor(Color.WHITE);
+    //            g.setStroke(new BasicStroke(2));
+    //            g.drawOval(savedScreenLoc.x - 4, savedScreenLoc.y - 4, 8, 8);
+    //        }
+    //
+    //        if (null != savedWorldLocation)
+    //        {
+    //            Vector3f relativeEntityWorldPosition = new Vector3f(savedWorldLocation);
+    //            relativeEntityWorldPosition.sub(centerBlockPositionf);
+    //
+    //            Vector2f screenLocation;
+    //            switch (displayAxisType) {
+    //                case XZ_AXIS: // top down view
+    //                    screenLocation = new Vector2f(relativeEntityWorldPosition.z, -relativeEntityWorldPosition.x);
+    //                    break;
+    //                case YZ_AXIS:
+    //                    screenLocation = new Vector2f(relativeEntityWorldPosition.z, relativeEntityWorldPosition.y);
+    //                    break;
+    //                case XY_AXIS:
+    //                    screenLocation = new Vector2f(relativeEntityWorldPosition.x, relativeEntityWorldPosition.y);
+    //                    break;
+    //                default:
+    //                    throw new RuntimeException("displayAxisType containts invalid value");
+    //            }
+    //
+    //            int drawLocationX = Math.round((screenLocation.x + mapCenterXf) * blockTileWidth);
+    //            int drawLocationY = Math.round((screenLocation.y + mapCenterYf) * blockTileHeight);
+    //
+    //            g.setColor(Color.RED);
+    //            g.setStroke(new BasicStroke(1));
+    //            g.drawOval(drawLocationX - 3, drawLocationY - 3, 6, 6);;
+    //        }
+    //    }
+
+    public void drawCharacterEntities(Graphics2D g, int blockTileSize) {
         LocalPlayer localPlayer = CoreRegistry.get(LocalPlayer.class);
         for (EntityRef entityRef : entityManager.getEntitiesWith(CharacterComponent.class)) {
             if (entityRef.equals(localPlayer.getCharacterEntity())) {
@@ -489,7 +513,9 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
                 logger.info("Need to render " + displayName + ": no itemComponent");
             }
         }
+    }
 
+    public void drawBlockSelection(Graphics2D g, Vector2i mousePosition) {
         // TODO: block selection rendering should be done by a separate system
         for (EntityRef entityRef : entityManager.getEntitiesWith(BlockSelectionComponent.class)) {
             BlockSelectionComponent blockSelectionComponent = entityRef.getComponent(BlockSelectionComponent.class);
@@ -543,16 +569,12 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
     }
 
     private Vector3i getViewBlockLocation() {
-        LocalPlayer localPlayer = CoreRegistry.get(LocalPlayer.class);
-        Vector3f worldPosition = localPlayer.getPosition();
+        Camera camera = getActiveCamera();
+        Vector3f worldPosition = camera.getPosition();
 
         centerBlockPositionf = new Vector3f(worldPosition);
-        centerBlockPositionf.add(new Vector3f(cameraOffset.x, cameraOffset.y, cameraOffset.z));
 
         Vector3i centerBlockPosition = new Vector3i(Math.round(worldPosition.x), Math.round(worldPosition.y), Math.round(worldPosition.z));
-        centerBlockPosition.add(cameraOffset);
-
-        //        centerBlockPositionf = new Vector3f(Math.round(centerBlockPosition.x), Math.round(centerBlockPosition.y), Math.round(centerBlockPosition.z));
 
         return centerBlockPosition;
     }
@@ -579,7 +601,7 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
             default:
                 throw new RuntimeException("displayAxisType containts invalid value");
         }
-        
+
         int blockTileSize = getBlockTileSize();
 
         int drawLocationX = Math.round((screenLocation.x + mapCenterXf) * blockTileSize);
@@ -593,7 +615,7 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
         savedScreenLoc = mousePosition;
 
         int blockTileSize = getBlockTileSize();
-        
+
         Vector2f screenLocation = new Vector2f(
                 ((float) mousePosition.x) / ((float) blockTileSize) - mapCenterXf,
                 ((float) mousePosition.y) / ((float) blockTileSize) - mapCenterYf);
@@ -656,7 +678,9 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
     }
 
     public void changeCameraOffsetBy(int i, int j, int k) {
-        cameraOffset = new Vector3i(cameraOffset.getX() + i, cameraOffset.getY() + j, cameraOffset.getZ() + k);
+        Camera camera = getActiveCamera();
+        Vector3f cameraPosition = camera.getPosition();
+        cameraPosition.set(cameraPosition.getX() + i, cameraPosition.getY() + j, cameraPosition.getZ() + k);
     }
 
     public void zoomIn() {

@@ -1,10 +1,5 @@
 package org.terasology.awt.world.renderer;
 
-import javax.vecmath.Vector3f;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.terasology.asset.Assets;
 import org.terasology.awt.input.binds.ScrollBackwardButton;
 import org.terasology.awt.input.binds.ScrollDownButton;
 import org.terasology.awt.input.binds.ScrollForwardButton;
@@ -14,39 +9,17 @@ import org.terasology.awt.input.binds.ScrollUpButton;
 import org.terasology.awt.input.binds.ToggleMapAxisButton;
 import org.terasology.awt.input.binds.ZoomInButton;
 import org.terasology.awt.input.binds.ZoomOutButton;
-import org.terasology.entitySystem.entity.EntityManager;
 import org.terasology.entitySystem.entity.EntityRef;
-import org.terasology.entitySystem.event.EventPriority;
 import org.terasology.entitySystem.event.ReceiveEvent;
 import org.terasology.entitySystem.systems.BaseComponentSystem;
-import org.terasology.input.MouseInput;
-import org.terasology.input.events.MouseButtonEvent;
-import org.terasology.logic.selection.ApplyBlockSelectionEvent;
-import org.terasology.math.Region3i;
-import org.terasology.math.Vector3i;
 import org.terasology.network.ClientComponent;
-import org.terasology.registry.CoreRegistry;
-import org.terasology.rendering.assets.texture.Texture;
-import org.terasology.rendering.assets.texture.TextureUtil;
-import org.terasology.rendering.nui.Color;
-import org.terasology.world.selection.BlockSelectionComponent;
 
 public class WorldControlSystem extends BaseComponentSystem {
 
-    private static final Logger logger = LoggerFactory.getLogger(WorldControlSystem.class);
-
     private BlockTileWorldRenderer renderer;
-
-    private EntityRef blockSelectionEntity = EntityRef.NULL;
 
     public WorldControlSystem(BlockTileWorldRenderer renderer) {
         this.renderer = renderer;
-        logger.debug("blockSelectionEntity is " + blockSelectionEntity);
-    }
-
-    @Override
-    public void shutdown() {
-        blockSelectionEntity.destroy();
     }
 
     @ReceiveEvent(components = {ClientComponent.class})
@@ -128,57 +101,5 @@ public class WorldControlSystem extends BaseComponentSystem {
 
             event.consume();
         }
-    }
-
-    @ReceiveEvent(components = {ClientComponent.class}, priority = EventPriority.PRIORITY_HIGH)
-    public void onMouseButtonEvent(MouseButtonEvent event, EntityRef entity) {
-        if (event.isDown()) {
-            if (MouseInput.MOUSE_LEFT == event.getButton()) {
-                Vector3f worldPosition = renderer.getWorldLocation(event.getMousePosition());
-
-                BlockSelectionComponent blockSelectionComponent;
-                if (EntityRef.NULL == blockSelectionEntity) {
-                    EntityManager entityManager = CoreRegistry.get(EntityManager.class);
-                    blockSelectionComponent = new BlockSelectionComponent();
-                    blockSelectionComponent.shouldRender = true;
-
-                    Color transparentGreen = new Color(0, 255, 0, 100);
-                    blockSelectionComponent.texture = Assets.get(TextureUtil.getTextureUriForColor(transparentGreen), Texture.class);
-
-                    blockSelectionEntity = entityManager.create(blockSelectionComponent);
-                    logger.debug("blockSelectionEntity created as  " + blockSelectionEntity + " with " + blockSelectionComponent);
-
-                } else {
-                    blockSelectionComponent = blockSelectionEntity.getComponent(BlockSelectionComponent.class);
-                    logger.debug("blockSelectionEntity fetched from  " + blockSelectionEntity + " as " + blockSelectionComponent);
-                }
-
-                if (null == blockSelectionComponent.startPosition) {
-                    
-                    blockSelectionComponent.startPosition = new Vector3i(worldPosition);
-                    blockSelectionComponent.shouldRender = true;
-                    logger.debug("blockSelectionComponent startPosition set to " + blockSelectionComponent.startPosition);
-                } else {
-                    blockSelectionComponent.currentSelection = Region3i.createBounded(blockSelectionComponent.startPosition, new Vector3i(worldPosition));
-                    logger.debug("blockSelectionComponent currentSelection set to " + blockSelectionComponent.currentSelection);
-                }
-            } else if (MouseInput.MOUSE_RIGHT == event.getButton()) {
-                if (EntityRef.NULL != blockSelectionEntity) {
-                    BlockSelectionComponent blockSelectionComponent = blockSelectionEntity.getComponent(BlockSelectionComponent.class);
-                    logger.debug("right click: blockSelectionEntity fetched from  " + blockSelectionEntity + " as " + blockSelectionComponent);
-                    if (null != blockSelectionComponent.currentSelection) {
-                        blockSelectionEntity.send(new ApplyBlockSelectionEvent(EntityRef.NULL, blockSelectionComponent.currentSelection));
-                        logger.debug("right click: ApplyBlockSelectionEvent send for  " + blockSelectionComponent.currentSelection);
-                    }
-
-                    blockSelectionComponent.shouldRender = false;
-                    blockSelectionComponent.currentSelection = null;
-                    blockSelectionComponent.startPosition = null;
-                    logger.debug("right click: blockSelectionComponent cleared");
-                }
-            }
-        }
-
-        event.consume();
     }
 }
