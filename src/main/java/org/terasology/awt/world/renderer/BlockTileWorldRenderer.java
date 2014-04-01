@@ -593,13 +593,13 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
                         ImageObserver observer = null;
 
                         g.drawImage(bufferedImage, destx1, desty1, destx2, desty2, sx1, sy1, sx2, sy2, observer);
-                    } else {
-                        Vector2i drawLocation1 = getScreenLocation(blockSelectionComponent.startPosition);
-                        Rect2i rect = Rect2i.createEncompassing(drawLocation1, mousePosition);
-
-                        g.setStroke(new BasicStroke(1));
-                        g.setColor(Color.WHITE);
-                        g.drawRect(rect.minX(), rect.minY(), rect.width(), rect.height());
+//                    } else {
+//                        Vector2i drawLocation1 = getScreenLocation(blockSelectionComponent.startPosition);
+//                        Rect2i rect = Rect2i.createEncompassing(drawLocation1, mousePosition);
+//
+//                        g.setStroke(new BasicStroke(1));
+//                        g.setColor(Color.WHITE);
+//                        g.drawRect(rect.minX(), rect.minY(), rect.width(), rect.height());
                     }
                 }
             }
