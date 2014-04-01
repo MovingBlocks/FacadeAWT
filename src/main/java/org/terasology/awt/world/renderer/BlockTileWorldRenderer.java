@@ -418,7 +418,7 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
 
         g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f));
 
-        drawCharacterEntities(g, blockTileSize);
+        drawCharacterEntities(g, blockTileSize, centerBlockPosition);
         drawBlockSelection(g, mousePosition);
     }
 
@@ -458,7 +458,7 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
     //        }
     //    }
 
-    public void drawCharacterEntities(Graphics2D g, int blockTileSize) {
+    public void drawCharacterEntities(Graphics2D g, int blockTileSize, Vector3i centerBlockPosition) {
         LocalPlayer localPlayer = CoreRegistry.get(LocalPlayer.class);
         for (EntityRef entityRef : entityManager.getEntitiesWith(CharacterComponent.class)) {
             if (entityRef.equals(localPlayer.getCharacterEntity())) {
@@ -477,34 +477,79 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
                 LocationComponent locationComponent = entityRef.getComponent(LocationComponent.class);
 
                 if (null != locationComponent) {
-                    TextureRegion textureRegion = itemComponent.icon;
-                    if (null != textureRegion) {
-                        AwtTexture awtTexture = (AwtTexture) textureRegion.getTexture();
+                    
+                    Vector3f characterWorldPosition = locationComponent.getWorldPosition();
+                    boolean shouldDraw = true;
+                    int alphaChangeCounter = 0;
+                    switch (displayAxisType) {
+                        case XZ_AXIS:
+                            if (characterWorldPosition.y > centerBlockPosition.y) {
+                                shouldDraw = false;
+                            } else {
+                                alphaChangeCounter = Math.round(centerBlockPosition.y - characterWorldPosition.y);
+                                if (alphaChangeCounter > (depthsOfTransparency - 1)) {
+                                    shouldDraw = false;
+                                }
+                            }
+                            break;
+                        case YZ_AXIS:
+                            if (characterWorldPosition.x < centerBlockPosition.x) {
+                                shouldDraw = false;
+                            } else {
+                                alphaChangeCounter = Math.round(characterWorldPosition.x - centerBlockPosition.x);
+                                if (alphaChangeCounter > (depthsOfTransparency - 1)) {
+                                    shouldDraw = false;
+                                }
+                            }
+                            break;
+                        case XY_AXIS:
+                            if (characterWorldPosition.z < centerBlockPosition.z) {
+                                shouldDraw = false;
+                            } else {
+                                alphaChangeCounter = Math.round(characterWorldPosition.z - centerBlockPosition.z);
+                                if (alphaChangeCounter > (depthsOfTransparency - 1)) {
+                                    shouldDraw = false;
+                                }
+                            }
+                            break;
+                        default:
+                            throw new RuntimeException("illegal displayAxisType " + displayAxisType);
+                    }
 
-                        BufferedImage bufferedImage = awtTexture.getBufferedImage(awtTexture.getWidth(), awtTexture.getHeight(), 1f, WHITE);
+                    // TODO: if we are behind something non-transparent, then do not draw either
 
-                        Rect2i pixelRegion = textureRegion.getPixelRegion();
+                    if (shouldDraw) {
+                        float alpha = darken[alphaChangeCounter];
+                        TextureRegion textureRegion = itemComponent.icon;
+                        if (null != textureRegion) {
+                            AwtTexture awtTexture = (AwtTexture) textureRegion.getTexture();
 
-                        Vector2i drawLocation = getScreenLocation(locationComponent.getWorldPosition());
+                            BufferedImage bufferedImage = awtTexture.getBufferedImage(
+                                    awtTexture.getWidth(), awtTexture.getHeight(), alpha, WHITE);
 
-                        Rect2i destRect = Rect2i.createFromMinAndSize(drawLocation.x - (pixelRegion.width() / 2), drawLocation.y - (pixelRegion.height() / 2),
-                                pixelRegion.width() / 32 * blockTileSize, pixelRegion.height() / 32 * blockTileSize);
+                            Rect2i pixelRegion = textureRegion.getPixelRegion();
 
-                        int destx1 = destRect.minX();
-                        int desty1 = destRect.minY();
-                        int destx2 = destRect.maxX();
-                        int desty2 = destRect.maxY();
+                            Vector2i drawLocation = getScreenLocation(characterWorldPosition);
 
-                        int sx1 = pixelRegion.minX();
-                        int sy1 = pixelRegion.minY();
-                        int sx2 = pixelRegion.maxX();
-                        int sy2 = pixelRegion.maxY();
+                            Rect2i destRect = Rect2i.createFromMinAndSize(drawLocation.x - (pixelRegion.width() / 2), drawLocation.y - (pixelRegion.height() / 2),
+                                    pixelRegion.width() / 32 * blockTileSize, pixelRegion.height() / 32 * blockTileSize);
 
-                        ImageObserver observer = null;
+                            int destx1 = destRect.minX();
+                            int desty1 = destRect.minY();
+                            int destx2 = destRect.maxX();
+                            int desty2 = destRect.maxY();
 
-                        g.drawImage(bufferedImage, destx1, desty1, destx2, desty2, sx1, sy1, sx2, sy2, observer);
-                    } else {
-                        logger.info("Need to render " + displayName + ": no itemComponent.icon");
+                            int sx1 = pixelRegion.minX();
+                            int sy1 = pixelRegion.minY();
+                            int sx2 = pixelRegion.maxX();
+                            int sy2 = pixelRegion.maxY();
+
+                            ImageObserver observer = null;
+
+                            g.drawImage(bufferedImage, destx1, desty1, destx2, desty2, sx1, sy1, sx2, sy2, observer);
+                        } else {
+                            logger.info("Need to render " + displayName + ": no itemComponent.icon");
+                        }
                     }
                 } else {
                     logger.info("Need to render " + displayName + ": no locationComponent");
@@ -596,7 +641,7 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
                 screenLocation = new Vector2f(relativeEntityWorldPosition.z, relativeEntityWorldPosition.y);
                 break;
             case XY_AXIS:
-                screenLocation = new Vector2f(relativeEntityWorldPosition.x, relativeEntityWorldPosition.y);
+                screenLocation = new Vector2f(-relativeEntityWorldPosition.x, relativeEntityWorldPosition.y);
                 break;
             default:
                 throw new RuntimeException("displayAxisType containts invalid value");
@@ -629,7 +674,7 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
                 relativeEntityWorldPosition = new Vector3f(0, screenLocation.x, screenLocation.y);
                 break;
             case XY_AXIS:
-                relativeEntityWorldPosition = new Vector3f(screenLocation.x, screenLocation.y, 0);
+                relativeEntityWorldPosition = new Vector3f(-screenLocation.x, screenLocation.y, 0);
                 break;
             default:
                 throw new RuntimeException("displayAxisType contains invalid value");
