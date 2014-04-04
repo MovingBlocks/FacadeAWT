@@ -51,65 +51,12 @@ public class WorldSelectionScreen extends CoreHudWidget {
         blockSelectionEntity.destroy();
     }
 
-    public boolean onMouseClickForWorldSelectionScreen(MouseInput button, Vector2i mousePosition) {
-        if (MouseInput.MOUSE_LEFT == button) {
-            Vector3f worldPosition = renderer.getWorldLocation(mousePosition);
-
-            BlockSelectionComponent blockSelectionComponent;
-            if (EntityRef.NULL == blockSelectionEntity) {
-                EntityManager entityManager = CoreRegistry.get(EntityManager.class);
-                blockSelectionComponent = new BlockSelectionComponent();
-                blockSelectionComponent.shouldRender = true;
-
-                Color transparentGreen = new Color(0, 255, 0, 100);
-                blockSelectionComponent.texture = Assets.get(TextureUtil.getTextureUriForColor(transparentGreen), Texture.class);
-
-                blockSelectionEntity = entityManager.create(blockSelectionComponent);
-                logger.debug("blockSelectionEntity created as  " + blockSelectionEntity + " with " + blockSelectionComponent);
-
-            } else {
-                blockSelectionComponent = blockSelectionEntity.getComponent(BlockSelectionComponent.class);
-                logger.debug("blockSelectionEntity fetched from  " + blockSelectionEntity + " as " + blockSelectionComponent);
-            }
-
-            if (null == blockSelectionComponent.startPosition) {
-
-                blockSelectionComponent.startPosition = new Vector3i(worldPosition);
-                blockSelectionComponent.shouldRender = true;
-                logger.debug("blockSelectionComponent startPosition set to " + blockSelectionComponent.startPosition);
-            } else {
-                blockSelectionComponent.currentSelection = Region3i.createBounded(blockSelectionComponent.startPosition, new Vector3i(worldPosition));
-                logger.debug("blockSelectionComponent currentSelection set to " + blockSelectionComponent.currentSelection);
-            }
-        } else if (MouseInput.MOUSE_RIGHT == button) {
-            if (EntityRef.NULL != blockSelectionEntity) {
-                BlockSelectionComponent blockSelectionComponent = blockSelectionEntity.getComponent(BlockSelectionComponent.class);
-                logger.debug("right click: blockSelectionEntity fetched from  " + blockSelectionEntity + " as " + blockSelectionComponent);
-                if (null != blockSelectionComponent.currentSelection) {
-                    blockSelectionEntity.send(new ApplyBlockSelectionEvent(EntityRef.NULL, blockSelectionComponent.currentSelection));
-                    logger.debug("right click: ApplyBlockSelectionEvent send for  " + blockSelectionComponent.currentSelection);
-                }
-
-                blockSelectionComponent.shouldRender = false;
-                blockSelectionComponent.currentSelection = null;
-                blockSelectionComponent.startPosition = null;
-                logger.debug("right click: blockSelectionComponent cleared");
-            }
-        }
-
-        return true;
-    }
-
     @Override
     public void onDraw(Canvas canvas) {
         canvas.addInteractionRegion(screenInteractionListener);
     }
 
     private final InteractionListener screenInteractionListener = new BaseInteractionListener() {
-//        @Override
-//        public boolean onMouseClick(MouseInput button, Vector2i pos) {
-//            return onMouseClickForWorldSelectionScreen(button, pos);
-//        }
 
         boolean isDragging = false;
         
@@ -124,8 +71,8 @@ public class WorldSelectionScreen extends CoreHudWidget {
                     blockSelectionComponent = new BlockSelectionComponent();
                     blockSelectionComponent.shouldRender = true;
 
-                    Color transparentGreen = new Color(0, 255, 0, 100);
-                    blockSelectionComponent.texture = Assets.get(TextureUtil.getTextureUriForColor(transparentGreen), Texture.class);
+                    Color selectionColor = new Color(100, 100, 150, 100);
+                    blockSelectionComponent.texture = Assets.get(TextureUtil.getTextureUriForColor(selectionColor), Texture.class);
 
                     blockSelectionEntity = entityManager.create(blockSelectionComponent);
                     logger.debug("blockSelectionEntity created as  " + blockSelectionEntity + " with " + blockSelectionComponent);
