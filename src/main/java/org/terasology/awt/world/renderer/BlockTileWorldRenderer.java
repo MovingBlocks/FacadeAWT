@@ -571,34 +571,58 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
             if (null != blockSelectionComponent) {
                 if (blockSelectionComponent.shouldRender) {
                     if (null != blockSelectionComponent.currentSelection) {
-                        Vector2i drawLocation1 = getScreenLocation(blockSelectionComponent.currentSelection.min());
-                        Vector3i max = blockSelectionComponent.currentSelection.max();
-                        max.add(1, 1, 1);
-                        Vector2i drawLocation2 = getScreenLocation(max);
-                        Rect2i rect = Rect2i.createEncompassing(drawLocation1, drawLocation2);
-
-                        TextureRegion textureRegion = blockSelectionComponent.texture;
-                        if (null == textureRegion) {
-                            textureRegion = Assets.getTexture("engine:selection");
+                        
+                        boolean shouldDraw = true;
+                        switch (displayAxisType) {
+                            case XZ_AXIS:
+                                if (centerBlockPosition.y < blockSelectionComponent.currentSelection.min().y ||  centerBlockPosition.y > blockSelectionComponent.currentSelection.max().y) {
+                                    shouldDraw = false;
+                                }
+                                break;
+                            case YZ_AXIS:
+                                if (centerBlockPosition.x < blockSelectionComponent.currentSelection.min().x ||  centerBlockPosition.x > blockSelectionComponent.currentSelection.max().x) {
+                                    shouldDraw = false;
+                                }
+                                break;
+                            case XY_AXIS:
+                                if (centerBlockPosition.z < blockSelectionComponent.currentSelection.min().z ||  centerBlockPosition.z > blockSelectionComponent.currentSelection.max().z) {
+                                    shouldDraw = false;
+                                }
+                                break;
+                            default:
+                                throw new RuntimeException("illegal displayAxisType " + displayAxisType);
                         }
+                        
+                        if (shouldDraw) {
+                            Vector2i drawLocation1 = getScreenLocation(blockSelectionComponent.currentSelection.min());
+                            Vector3i max = blockSelectionComponent.currentSelection.max();
+                            max.add(1, 1, 1);
+                            Vector2i drawLocation2 = getScreenLocation(max);
+                            Rect2i rect = Rect2i.createEncompassing(drawLocation1, drawLocation2);
 
-                        AwtTexture awtTexture = (AwtTexture) textureRegion.getTexture();
-                        BufferedImage bufferedImage = awtTexture.getBufferedImage(awtTexture.getWidth(), awtTexture.getHeight(), 1f, WHITE);
-                        Rect2i pixelRegion = textureRegion.getPixelRegion();
+                            TextureRegion textureRegion = blockSelectionComponent.texture;
+                            if (null == textureRegion) {
+                                textureRegion = Assets.getTexture("engine:selection");
+                            }
 
-                        int destx1 = rect.minX();
-                        int desty1 = rect.minY();
-                        int destx2 = rect.maxX();
-                        int desty2 = rect.maxY();
-                        logger.info("Drawing " + blockSelectionComponent.currentSelection + " at " + rect);
-                        int sx1 = pixelRegion.minX();
-                        int sy1 = pixelRegion.minY();
-                        int sx2 = pixelRegion.maxX();
-                        int sy2 = pixelRegion.maxY();
+                            AwtTexture awtTexture = (AwtTexture) textureRegion.getTexture();
+                            BufferedImage bufferedImage = awtTexture.getBufferedImage(awtTexture.getWidth(), awtTexture.getHeight(), 1f, WHITE);
+                            Rect2i pixelRegion = textureRegion.getPixelRegion();
 
-                        ImageObserver observer = null;
+                            int destx1 = rect.minX();
+                            int desty1 = rect.minY();
+                            int destx2 = rect.maxX();
+                            int desty2 = rect.maxY();
+                            logger.info("Drawing " + blockSelectionComponent.currentSelection + " at " + rect);
+                            int sx1 = pixelRegion.minX();
+                            int sy1 = pixelRegion.minY();
+                            int sx2 = pixelRegion.maxX();
+                            int sy2 = pixelRegion.maxY();
 
-                        g.drawImage(bufferedImage, destx1, desty1, destx2, desty2, sx1, sy1, sx2, sy2, observer);
+                            ImageObserver observer = null;
+
+                            g.drawImage(bufferedImage, destx1, desty1, destx2, desty2, sx1, sy1, sx2, sy2, observer);
+                        }
 //                    } else {
 //                        Vector2i drawLocation1 = getScreenLocation(blockSelectionComponent.startPosition);
 //                        Rect2i rect = Rect2i.createEncompassing(drawLocation1, mousePosition);
