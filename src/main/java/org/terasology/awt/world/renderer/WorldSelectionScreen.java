@@ -1,7 +1,5 @@
 package org.terasology.awt.world.renderer;
 
-import javax.vecmath.Vector3f;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.terasology.asset.Assets;
@@ -68,7 +66,7 @@ public class WorldSelectionScreen extends CoreHudWidget {
         @Override
         public boolean onMouseClick(MouseInput button, Vector2i mousePosition) {
             if (MouseInput.MOUSE_LEFT == button) {
-                Vector3i worldPosition = renderer.getWorldLocation(mousePosition);
+                Vector3i worldPosition = new Vector3i(renderer.getWorldLocation(mousePosition));
 
                 BlockSelectionComponent blockSelectionComponent;
                 if (EntityRef.NULL == blockSelectionEntity) {
@@ -117,7 +115,7 @@ public class WorldSelectionScreen extends CoreHudWidget {
         public void onMouseDrag(Vector2i mousePosition) {
             isDragging = true;
             
-            Vector3i worldPosition = renderer.getWorldLocation(mousePosition);
+            Vector3i worldPosition = new Vector3i(renderer.getWorldLocation(mousePosition));
 
             BlockSelectionComponent blockSelectionComponent = blockSelectionEntity.getComponent(BlockSelectionComponent.class);
             if (null == blockSelectionComponent.startPosition) {
@@ -133,7 +131,7 @@ public class WorldSelectionScreen extends CoreHudWidget {
         @Override
         public void onMouseRelease(MouseInput button, Vector2i mousePosition) {
             if (isDragging) {
-                Vector3i worldPosition = renderer.getWorldLocation(mousePosition);
+                Vector3i worldPosition = new Vector3i(renderer.getWorldLocation(mousePosition));
 
                 BlockSelectionComponent blockSelectionComponent = blockSelectionEntity.getComponent(BlockSelectionComponent.class);
                 blockSelectionComponent.currentSelection = Region3i.createBounded(blockSelectionComponent.startPosition, worldPosition);
