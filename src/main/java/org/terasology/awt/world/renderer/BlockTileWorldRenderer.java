@@ -101,15 +101,9 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
     private int depthsOfTransparency = 16;
     private float[] darken;
 
-    private Vector3i centerBlockPosition;              // not sure, if these should really be class members
+    // These are currently be class members so that other classes can call getWorldLocation(screenLocation)
     private int mapCenterY;
     private int mapCenterX;
-
-//    private Vector3f centerBlockPositionf;              // not sure, if these should really be class members
-//    private float mapCenterYf;
-//    private float mapCenterXf;
-    private Vector2i savedScreenLoc;
-    private Vector3f savedWorldLocation;
 
     private EntityManager entityManager;
 
@@ -235,10 +229,6 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
         } else {
             renderMode = RenderMode.IMAGE;
         }
-
-        // TODO: add camera coords.
-//        mapCenterXf = ((blocksWide + 0.5f) / 2f);
-//        mapCenterYf = ((blocksHigh + 0.5f) / 2f);
 
         mapCenterX = (int) ((blocksWide + 0.5f) / 2f);
         mapCenterY = (int) ((blocksHigh + 0.5f) / 2f);
@@ -426,42 +416,6 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
         drawBlockSelection(g, mousePosition);
     }
 
-    //    public void testMouseHit(Graphics2D g, int blockTileWidth, int blockTileHeight) {
-    //        if (null != savedScreenLoc) {
-    //            g.setColor(Color.WHITE);
-    //            g.setStroke(new BasicStroke(2));
-    //            g.drawOval(savedScreenLoc.x - 4, savedScreenLoc.y - 4, 8, 8);
-    //        }
-    //
-    //        if (null != savedWorldLocation)
-    //        {
-    //            Vector3f relativeEntityWorldPosition = new Vector3f(savedWorldLocation);
-    //            relativeEntityWorldPosition.sub(centerBlockPositionf);
-    //
-    //            Vector2f screenLocation;
-    //            switch (displayAxisType) {
-    //                case XZ_AXIS: // top down view
-    //                    screenLocation = new Vector2f(relativeEntityWorldPosition.z, -relativeEntityWorldPosition.x);
-    //                    break;
-    //                case YZ_AXIS:
-    //                    screenLocation = new Vector2f(relativeEntityWorldPosition.z, relativeEntityWorldPosition.y);
-    //                    break;
-    //                case XY_AXIS:
-    //                    screenLocation = new Vector2f(relativeEntityWorldPosition.x, relativeEntityWorldPosition.y);
-    //                    break;
-    //                default:
-    //                    throw new RuntimeException("displayAxisType containts invalid value");
-    //            }
-    //
-    //            int drawLocationX = Math.round((screenLocation.x + mapCenterXf) * blockTileWidth);
-    //            int drawLocationY = Math.round((screenLocation.y + mapCenterYf) * blockTileHeight);
-    //
-    //            g.setColor(Color.RED);
-    //            g.setStroke(new BasicStroke(1));
-    //            g.drawOval(drawLocationX - 3, drawLocationY - 3, 6, 6);;
-    //        }
-    //    }
-
     public void drawCharacterEntities(Graphics2D g, int blockTileSize, Vector3i centerBlockPosition) {
         LocalPlayer localPlayer = CoreRegistry.get(LocalPlayer.class);
         for (EntityRef entityRef : entityManager.getEntitiesWith(CharacterComponent.class)) {
@@ -565,6 +519,8 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
     }
 
     public void drawBlockSelection(Graphics2D g, Vector2i mousePosition) {
+        Vector3i centerBlockPosition = getViewBlockLocation();
+
         // TODO: block selection rendering should be done by a separate system
         for (EntityRef entityRef : entityManager.getEntitiesWith(BlockSelectionComponent.class)) {
             BlockSelectionComponent blockSelectionComponent = entityRef.getComponent(BlockSelectionComponent.class);
@@ -573,6 +529,7 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
                     if (null != blockSelectionComponent.currentSelection) {
                         
                         boolean shouldDraw = true;
+                        
                         switch (displayAxisType) {
                             case XZ_AXIS:
                                 if (centerBlockPosition.y < blockSelectionComponent.currentSelection.min().y ||  centerBlockPosition.y > blockSelectionComponent.currentSelection.max().y) {
@@ -623,13 +580,6 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
 
                             g.drawImage(bufferedImage, destx1, desty1, destx2, desty2, sx1, sy1, sx2, sy2, observer);
                         }
-//                    } else {
-//                        Vector2i drawLocation1 = getScreenLocation(blockSelectionComponent.startPosition);
-//                        Rect2i rect = Rect2i.createEncompassing(drawLocation1, mousePosition);
-//
-//                        g.setStroke(new BasicStroke(1));
-//                        g.setColor(Color.WHITE);
-//                        g.drawRect(rect.minX(), rect.minY(), rect.width(), rect.height());
                     }
                 }
             }
@@ -647,106 +597,52 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
         Camera camera = getActiveCamera();
         Vector3f worldPosition = camera.getPosition();
 
-        // centerBlockPositionf = new Vector3f(worldPosition);
-
-        centerBlockPosition = new Vector3i(Math.round(worldPosition.x), Math.round(worldPosition.y), Math.round(worldPosition.z));
-
+        Vector3i centerBlockPosition = new Vector3i(Math.round(worldPosition.x), Math.round(worldPosition.y), Math.round(worldPosition.z));
         return centerBlockPosition;
     }
 
-    public Vector2i getScreenLocation(Vector3i worldLocation) {
+    private Vector2i getScreenLocation(Vector3i worldLocation) {
         return getScreenLocation(new Vector3f(worldLocation.x, worldLocation.y, worldLocation.z));
     }
 
-//    public Vector2i getScreenLocation_OLDFloat(Vector3f worldLocation) {
-//        Vector3f relativeEntityWorldPosition = new Vector3f(worldLocation);
-//        relativeEntityWorldPosition.sub(centerBlockPositionf);
-//
-//        Vector2f screenLocation;
-//        switch (displayAxisType) {
-//            case XZ_AXIS: // top down view
-//                screenLocation = new Vector2f(relativeEntityWorldPosition.z, -relativeEntityWorldPosition.x);
-//                break;
-//            case YZ_AXIS:
-//                screenLocation = new Vector2f(relativeEntityWorldPosition.z, relativeEntityWorldPosition.y);
-//                break;
-//            case XY_AXIS:
-//                screenLocation = new Vector2f(-relativeEntityWorldPosition.x, relativeEntityWorldPosition.y);
-//                break;
-//            default:
-//                throw new RuntimeException("displayAxisType containts invalid value");
-//        }
-//
-//        int blockTileSize = getBlockTileSize();
-//
-//        int drawLocationX = Math.round((screenLocation.x + mapCenterXf) * blockTileSize);
-//        int drawLocationY = Math.round((screenLocation.y + mapCenterYf) * blockTileSize);
-//        Vector2i drawLocation = new Vector2i(drawLocationX, drawLocationY);
-//        return drawLocation;
-//    }
+    private Vector2i getScreenLocation(Vector3f worldLocation) {
+        Vector3f relativeEntityWorldPosition = new Vector3f(worldLocation);
+        Vector3i centerBlockPosition = getViewBlockLocation();
+        relativeEntityWorldPosition.sub(new Vector3f(centerBlockPosition.x, centerBlockPosition.y, centerBlockPosition.z));
 
-    public Vector2i getScreenLocation(Vector3f worldLocation) {
-        Vector3i relativeEntityWorldPosition = new Vector3i(worldLocation);
-        relativeEntityWorldPosition.sub(centerBlockPosition);
-
-        Vector2i screenLocation;
+        Vector2f screenLocation;
         switch (displayAxisType) {
             case XZ_AXIS: // top down view
-                screenLocation = new Vector2i(relativeEntityWorldPosition.z, -relativeEntityWorldPosition.x);
+                // TODO: Not sure why we need this offset adjustment
+                relativeEntityWorldPosition.add(new Vector3f(-1, 0, 0));
+
+                screenLocation = new Vector2f(relativeEntityWorldPosition.z, -relativeEntityWorldPosition.x);
                 break;
             case YZ_AXIS:
-                screenLocation = new Vector2i(relativeEntityWorldPosition.z, relativeEntityWorldPosition.y);
+                // TODO: Not sure why we need this offset adjustment
+                relativeEntityWorldPosition.add(new Vector3f(0, -1, 0));
+
+                screenLocation = new Vector2f(relativeEntityWorldPosition.z, -relativeEntityWorldPosition.y);
                 break;
             case XY_AXIS:
-                screenLocation = new Vector2i(-relativeEntityWorldPosition.x, relativeEntityWorldPosition.y);
+                // TODO: Not sure why we need this offset adjustment
+                relativeEntityWorldPosition.add(new Vector3f(-1, -1, 0));
+
+                screenLocation = new Vector2f(-relativeEntityWorldPosition.x, -relativeEntityWorldPosition.y);
                 break;
             default:
                 throw new RuntimeException("displayAxisType containts invalid value");
         }
 
         int blockTileSize = getBlockTileSize();
-
-        int drawLocationX = (screenLocation.x + mapCenterX) * blockTileSize;
-        int drawLocationY = (screenLocation.y + mapCenterY) * blockTileSize;
+        
+        int drawLocationX = Math.round((screenLocation.x + mapCenterX) * blockTileSize);
+        int drawLocationY = Math.round((screenLocation.y + mapCenterY) * blockTileSize);
         Vector2i drawLocation = new Vector2i(drawLocationX, drawLocationY);
         return drawLocation;
     }
 
-//    public Vector3f getWorldLocation_OLD_Float(Vector2i mousePosition) {
-//
-//        savedScreenLoc = mousePosition;
-//
-//        int blockTileSize = getBlockTileSize();
-//
-//        Vector2f screenLocation = new Vector2f(
-//                ((float) mousePosition.x) / ((float) blockTileSize) - mapCenterXf,
-//                ((float) mousePosition.y) / ((float) blockTileSize) - mapCenterYf);
-//
-//        Vector3f relativeEntityWorldPosition;
-//        switch (displayAxisType) {
-//            case XZ_AXIS: // top down view
-//                relativeEntityWorldPosition = new Vector3f(-screenLocation.y, 0, screenLocation.x);
-//                break;
-//            case YZ_AXIS:
-//                relativeEntityWorldPosition = new Vector3f(0, screenLocation.x, screenLocation.y);
-//                break;
-//            case XY_AXIS:
-//                relativeEntityWorldPosition = new Vector3f(-screenLocation.x, screenLocation.y, 0);
-//                break;
-//            default:
-//                throw new RuntimeException("displayAxisType contains invalid value");
-//        }
-//
-//        relativeEntityWorldPosition.add(centerBlockPositionf);
-//
-//        savedWorldLocation = relativeEntityWorldPosition;
-//
-//        return relativeEntityWorldPosition;
-//    }
-
-    public Vector3i getWorldLocation(Vector2i mousePosition) {
-
-        savedScreenLoc = mousePosition;
+    public Vector3f getWorldLocation(Vector2i mousePosition) {
 
         int blockTileSize = getBlockTileSize();
 
@@ -754,24 +650,32 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
                 ((float) mousePosition.x) / (float)(blockTileSize) - mapCenterX,
                 ((float) mousePosition.y) / (float)(blockTileSize) - mapCenterY);
 
-        Vector3i relativeEntityWorldPosition;
+        Vector3f relativeEntityWorldPosition;
         switch (displayAxisType) {
             case XZ_AXIS: // top down view
-                relativeEntityWorldPosition = new Vector3i(-screenLocation.y, 0, screenLocation.x);
+                relativeEntityWorldPosition = new Vector3f(-screenLocation.y, 0, screenLocation.x);
+
+                // TODO: Not sure why we need this offset adjustment
+                relativeEntityWorldPosition.add(new Vector3f(1, 0, 0));
                 break;
             case YZ_AXIS:
-                relativeEntityWorldPosition = new Vector3i(0, screenLocation.x, screenLocation.y);
+                relativeEntityWorldPosition = new Vector3f(0, -screenLocation.y, screenLocation.x);
+
+                // TODO: Not sure why we need this offset adjustment
+                relativeEntityWorldPosition.add(new Vector3f(0, 1, 0));
                 break;
             case XY_AXIS:
-                relativeEntityWorldPosition = new Vector3i(-screenLocation.x, screenLocation.y, 0);
+                relativeEntityWorldPosition = new Vector3f(-screenLocation.x, -screenLocation.y, 0);
+
+                // TODO: Not sure why we need this offset adjustment
+                relativeEntityWorldPosition.add(new Vector3f(1, 1, 0));
                 break;
             default:
                 throw new RuntimeException("displayAxisType contains invalid value");
         }
 
-        relativeEntityWorldPosition.add(centerBlockPosition);
-
-//        savedWorldLocation = relativeEntityWorldPosition;
+        Vector3i centerBlockPosition = getViewBlockLocation();
+        relativeEntityWorldPosition.add(new Vector3f(centerBlockPosition.x, centerBlockPosition.y, centerBlockPosition.z));
 
         return relativeEntityWorldPosition;
     }
@@ -799,14 +703,14 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
 
     public void toggleAxis() {
         switch (displayAxisType) {
-            case XY_AXIS:
-                displayAxisType = DisplayAxisType.XZ_AXIS;
-                break;
             case XZ_AXIS:
                 displayAxisType = DisplayAxisType.YZ_AXIS;
                 break;
             case YZ_AXIS:
                 displayAxisType = DisplayAxisType.XY_AXIS;
+                break;
+            case XY_AXIS:
+                displayAxisType = DisplayAxisType.XZ_AXIS;
                 break;
         }
     }
