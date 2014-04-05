@@ -101,9 +101,13 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
     private int depthsOfTransparency = 16;
     private float[] darken;
 
-    private Vector3f centerBlockPositionf;              // not sure, if these should really be class members
-    private float mapCenterYf;
-    private float mapCenterXf;
+    private Vector3i centerBlockPosition;              // not sure, if these should really be class members
+    private int mapCenterY;
+    private int mapCenterX;
+
+//    private Vector3f centerBlockPositionf;              // not sure, if these should really be class members
+//    private float mapCenterYf;
+//    private float mapCenterXf;
     private Vector2i savedScreenLoc;
     private Vector3f savedWorldLocation;
 
@@ -233,11 +237,11 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
         }
 
         // TODO: add camera coords.
-        mapCenterXf = ((blocksWide + 0.5f) / 2f);
-        mapCenterYf = ((blocksHigh + 0.5f) / 2f);
+//        mapCenterXf = ((blocksWide + 0.5f) / 2f);
+//        mapCenterYf = ((blocksHigh + 0.5f) / 2f);
 
-        int mapCenterX = (int) ((blocksWide + 0.5f) / 2f);
-        int mapCenterY = (int) ((blocksHigh + 0.5f) / 2f);
+        mapCenterX = (int) ((blocksWide + 0.5f) / 2f);
+        mapCenterY = (int) ((blocksHigh + 0.5f) / 2f);
 
         Vector3i behindLocationChange;
         switch (displayAxisType) {
@@ -568,7 +572,9 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
                 if (blockSelectionComponent.shouldRender) {
                     if (null != blockSelectionComponent.currentSelection) {
                         Vector2i drawLocation1 = getScreenLocation(blockSelectionComponent.currentSelection.min());
-                        Vector2i drawLocation2 = getScreenLocation(blockSelectionComponent.currentSelection.max());
+                        Vector3i max = blockSelectionComponent.currentSelection.max();
+                        max.add(1, 1, 1);
+                        Vector2i drawLocation2 = getScreenLocation(max);
                         Rect2i rect = Rect2i.createEncompassing(drawLocation1, drawLocation2);
 
                         TextureRegion textureRegion = blockSelectionComponent.texture;
@@ -584,7 +590,7 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
                         int desty1 = rect.minY();
                         int destx2 = rect.maxX();
                         int desty2 = rect.maxY();
-
+                        logger.info("Drawing " + blockSelectionComponent.currentSelection + " at " + rect);
                         int sx1 = pixelRegion.minX();
                         int sy1 = pixelRegion.minY();
                         int sx2 = pixelRegion.maxX();
@@ -617,9 +623,9 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
         Camera camera = getActiveCamera();
         Vector3f worldPosition = camera.getPosition();
 
-        centerBlockPositionf = new Vector3f(worldPosition);
+        // centerBlockPositionf = new Vector3f(worldPosition);
 
-        Vector3i centerBlockPosition = new Vector3i(Math.round(worldPosition.x), Math.round(worldPosition.y), Math.round(worldPosition.z));
+        centerBlockPosition = new Vector3i(Math.round(worldPosition.x), Math.round(worldPosition.y), Math.round(worldPosition.z));
 
         return centerBlockPosition;
     }
@@ -628,20 +634,47 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
         return getScreenLocation(new Vector3f(worldLocation.x, worldLocation.y, worldLocation.z));
     }
 
-    public Vector2i getScreenLocation(Vector3f worldLocation) {
-        Vector3f relativeEntityWorldPosition = new Vector3f(worldLocation);
-        relativeEntityWorldPosition.sub(centerBlockPositionf);
+//    public Vector2i getScreenLocation_OLDFloat(Vector3f worldLocation) {
+//        Vector3f relativeEntityWorldPosition = new Vector3f(worldLocation);
+//        relativeEntityWorldPosition.sub(centerBlockPositionf);
+//
+//        Vector2f screenLocation;
+//        switch (displayAxisType) {
+//            case XZ_AXIS: // top down view
+//                screenLocation = new Vector2f(relativeEntityWorldPosition.z, -relativeEntityWorldPosition.x);
+//                break;
+//            case YZ_AXIS:
+//                screenLocation = new Vector2f(relativeEntityWorldPosition.z, relativeEntityWorldPosition.y);
+//                break;
+//            case XY_AXIS:
+//                screenLocation = new Vector2f(-relativeEntityWorldPosition.x, relativeEntityWorldPosition.y);
+//                break;
+//            default:
+//                throw new RuntimeException("displayAxisType containts invalid value");
+//        }
+//
+//        int blockTileSize = getBlockTileSize();
+//
+//        int drawLocationX = Math.round((screenLocation.x + mapCenterXf) * blockTileSize);
+//        int drawLocationY = Math.round((screenLocation.y + mapCenterYf) * blockTileSize);
+//        Vector2i drawLocation = new Vector2i(drawLocationX, drawLocationY);
+//        return drawLocation;
+//    }
 
-        Vector2f screenLocation;
+    public Vector2i getScreenLocation(Vector3f worldLocation) {
+        Vector3i relativeEntityWorldPosition = new Vector3i(worldLocation);
+        relativeEntityWorldPosition.sub(centerBlockPosition);
+
+        Vector2i screenLocation;
         switch (displayAxisType) {
             case XZ_AXIS: // top down view
-                screenLocation = new Vector2f(relativeEntityWorldPosition.z, -relativeEntityWorldPosition.x);
+                screenLocation = new Vector2i(relativeEntityWorldPosition.z, -relativeEntityWorldPosition.x);
                 break;
             case YZ_AXIS:
-                screenLocation = new Vector2f(relativeEntityWorldPosition.z, relativeEntityWorldPosition.y);
+                screenLocation = new Vector2i(relativeEntityWorldPosition.z, relativeEntityWorldPosition.y);
                 break;
             case XY_AXIS:
-                screenLocation = new Vector2f(-relativeEntityWorldPosition.x, relativeEntityWorldPosition.y);
+                screenLocation = new Vector2i(-relativeEntityWorldPosition.x, relativeEntityWorldPosition.y);
                 break;
             default:
                 throw new RuntimeException("displayAxisType containts invalid value");
@@ -649,40 +682,72 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
 
         int blockTileSize = getBlockTileSize();
 
-        int drawLocationX = Math.round((screenLocation.x + mapCenterXf) * blockTileSize);
-        int drawLocationY = Math.round((screenLocation.y + mapCenterYf) * blockTileSize);
+        int drawLocationX = (screenLocation.x + mapCenterX) * blockTileSize;
+        int drawLocationY = (screenLocation.y + mapCenterY) * blockTileSize;
         Vector2i drawLocation = new Vector2i(drawLocationX, drawLocationY);
         return drawLocation;
     }
 
-    public Vector3f getWorldLocation(Vector2i mousePosition) {
+//    public Vector3f getWorldLocation_OLD_Float(Vector2i mousePosition) {
+//
+//        savedScreenLoc = mousePosition;
+//
+//        int blockTileSize = getBlockTileSize();
+//
+//        Vector2f screenLocation = new Vector2f(
+//                ((float) mousePosition.x) / ((float) blockTileSize) - mapCenterXf,
+//                ((float) mousePosition.y) / ((float) blockTileSize) - mapCenterYf);
+//
+//        Vector3f relativeEntityWorldPosition;
+//        switch (displayAxisType) {
+//            case XZ_AXIS: // top down view
+//                relativeEntityWorldPosition = new Vector3f(-screenLocation.y, 0, screenLocation.x);
+//                break;
+//            case YZ_AXIS:
+//                relativeEntityWorldPosition = new Vector3f(0, screenLocation.x, screenLocation.y);
+//                break;
+//            case XY_AXIS:
+//                relativeEntityWorldPosition = new Vector3f(-screenLocation.x, screenLocation.y, 0);
+//                break;
+//            default:
+//                throw new RuntimeException("displayAxisType contains invalid value");
+//        }
+//
+//        relativeEntityWorldPosition.add(centerBlockPositionf);
+//
+//        savedWorldLocation = relativeEntityWorldPosition;
+//
+//        return relativeEntityWorldPosition;
+//    }
+
+    public Vector3i getWorldLocation(Vector2i mousePosition) {
 
         savedScreenLoc = mousePosition;
 
         int blockTileSize = getBlockTileSize();
 
         Vector2f screenLocation = new Vector2f(
-                ((float) mousePosition.x) / ((float) blockTileSize) - mapCenterXf,
-                ((float) mousePosition.y) / ((float) blockTileSize) - mapCenterYf);
+                ((float) mousePosition.x) / (float)(blockTileSize) - mapCenterX,
+                ((float) mousePosition.y) / (float)(blockTileSize) - mapCenterY);
 
-        Vector3f relativeEntityWorldPosition;
+        Vector3i relativeEntityWorldPosition;
         switch (displayAxisType) {
             case XZ_AXIS: // top down view
-                relativeEntityWorldPosition = new Vector3f(-screenLocation.y, 0, screenLocation.x);
+                relativeEntityWorldPosition = new Vector3i(-screenLocation.y, 0, screenLocation.x);
                 break;
             case YZ_AXIS:
-                relativeEntityWorldPosition = new Vector3f(0, screenLocation.x, screenLocation.y);
+                relativeEntityWorldPosition = new Vector3i(0, screenLocation.x, screenLocation.y);
                 break;
             case XY_AXIS:
-                relativeEntityWorldPosition = new Vector3f(-screenLocation.x, screenLocation.y, 0);
+                relativeEntityWorldPosition = new Vector3i(-screenLocation.x, screenLocation.y, 0);
                 break;
             default:
                 throw new RuntimeException("displayAxisType contains invalid value");
         }
 
-        relativeEntityWorldPosition.add(centerBlockPositionf);
+        relativeEntityWorldPosition.add(centerBlockPosition);
 
-        savedWorldLocation = relativeEntityWorldPosition;
+//        savedWorldLocation = relativeEntityWorldPosition;
 
         return relativeEntityWorldPosition;
     }

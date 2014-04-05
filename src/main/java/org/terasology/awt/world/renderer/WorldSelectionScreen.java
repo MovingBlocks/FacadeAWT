@@ -61,9 +61,14 @@ public class WorldSelectionScreen extends CoreHudWidget {
         boolean isDragging = false;
         
         @Override
+        public void onMouseOver(Vector2i pos, boolean topMostElement) {
+            if (true) logger.debug("MouseOver pos=" + pos);
+        }
+
+        @Override
         public boolean onMouseClick(MouseInput button, Vector2i mousePosition) {
             if (MouseInput.MOUSE_LEFT == button) {
-                Vector3f worldPosition = renderer.getWorldLocation(mousePosition);
+                Vector3i worldPosition = renderer.getWorldLocation(mousePosition);
 
                 BlockSelectionComponent blockSelectionComponent;
                 if (EntityRef.NULL == blockSelectionEntity) {
@@ -82,7 +87,7 @@ public class WorldSelectionScreen extends CoreHudWidget {
                     logger.debug("blockSelectionEntity fetched from  " + blockSelectionEntity + " as " + blockSelectionComponent);
                 }
 
-                blockSelectionComponent.startPosition = new Vector3i(worldPosition);
+                blockSelectionComponent.startPosition = worldPosition;
                 blockSelectionComponent.currentSelection = null;
                 blockSelectionComponent.shouldRender = true;
                 logger.debug("blockSelectionComponent startPosition set to " + blockSelectionComponent.startPosition);
@@ -112,26 +117,26 @@ public class WorldSelectionScreen extends CoreHudWidget {
         public void onMouseDrag(Vector2i mousePosition) {
             isDragging = true;
             
-            Vector3f worldPosition = renderer.getWorldLocation(mousePosition);
+            Vector3i worldPosition = renderer.getWorldLocation(mousePosition);
 
             BlockSelectionComponent blockSelectionComponent = blockSelectionEntity.getComponent(BlockSelectionComponent.class);
             if (null == blockSelectionComponent.startPosition) {
-                blockSelectionComponent.startPosition = new Vector3i(worldPosition);
+                blockSelectionComponent.startPosition = worldPosition;
                 blockSelectionComponent.currentSelection = null;
                 blockSelectionComponent.shouldRender = true;
                 logger.debug("blockSelectionComponent startPosition set to " + blockSelectionComponent.startPosition + " in mouse dragged");
             } else {
-                blockSelectionComponent.currentSelection = Region3i.createBounded(blockSelectionComponent.startPosition, new Vector3i(worldPosition));
+                blockSelectionComponent.currentSelection = Region3i.createBounded(blockSelectionComponent.startPosition, worldPosition);
             }
         }
 
         @Override
         public void onMouseRelease(MouseInput button, Vector2i mousePosition) {
             if (isDragging) {
-                Vector3f worldPosition = renderer.getWorldLocation(mousePosition);
+                Vector3i worldPosition = renderer.getWorldLocation(mousePosition);
 
                 BlockSelectionComponent blockSelectionComponent = blockSelectionEntity.getComponent(BlockSelectionComponent.class);
-                blockSelectionComponent.currentSelection = Region3i.createBounded(blockSelectionComponent.startPosition, new Vector3i(worldPosition));
+                blockSelectionComponent.currentSelection = Region3i.createBounded(blockSelectionComponent.startPosition, worldPosition);
 
                 logger.debug("right click: blockSelectionEntity fetched from  " + blockSelectionEntity + " as " + blockSelectionComponent);
                 if (null != blockSelectionComponent.currentSelection) {
