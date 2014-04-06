@@ -56,6 +56,7 @@ import org.terasology.rendering.nui.HorizontalAlign;
 import org.terasology.rendering.nui.ScaleMode;
 import org.terasology.rendering.nui.VerticalAlign;
 import org.terasology.rendering.nui.internal.CanvasRenderer;
+import org.terasology.rendering.opengl.FrameBufferObject;
 import org.terasology.world.block.Block;
 import org.terasology.world.block.BlockAppearance;
 import org.terasology.world.block.BlockManager;
@@ -407,6 +408,11 @@ public class AwtCanvasRenderer implements CanvasRenderer {
         drawTextureBorderedWithoutUxUy(texture, region, border, tile, uw, uh, alpha);
     }
 
+    @Override
+    public FrameBufferObject getFBO(AssetUri uri, Vector2i region) {
+        return null;
+    }
+    
     /**
      * It's unclear why I don't need to use ux/uy
      */
