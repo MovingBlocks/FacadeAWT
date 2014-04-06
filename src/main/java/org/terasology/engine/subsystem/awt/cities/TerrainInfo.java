@@ -16,8 +16,6 @@
 
 package org.terasology.engine.subsystem.awt.cities;
 
-import com.bulletphysics.demos.applet.Rasterizer;
-
 /**
  * Some terrain info for {@link Rasterizer}s
  * @author Martin Steiger
