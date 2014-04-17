@@ -95,8 +95,13 @@ public class AwtGraphics implements EngineSubsystem {
     public void postInitialise(Config config) {
         AssetManager assetManager = CoreRegistry.get(AssetManager.class);
 
-        ClasspathSource sourceFacade = new ClasspathSource(TerasologyConstants.ENGINE_MODULE,
-                getClass().getProtectionDomain().getCodeSource(), TerasologyConstants.ASSETS_SUBDIRECTORY, TerasologyConstants.OVERRIDES_SUBDIRECTORY);
+        ClasspathSource sourceFacade = new ClasspathSource(
+                TerasologyConstants.ENGINE_MODULE,
+                getClass().getProtectionDomain().getCodeSource(), 
+                TerasologyConstants.ASSETS_SUBDIRECTORY, 
+                TerasologyConstants.OVERRIDES_SUBDIRECTORY,
+                TerasologyConstants.DELTAS_SUBDIRECTORY);
+        
         assetManager.addAssetSource(sourceFacade);
 
         CoreRegistry.putPermanently(RenderingSubsystemFactory.class, new AwtRenderingSubsystemFactory());
