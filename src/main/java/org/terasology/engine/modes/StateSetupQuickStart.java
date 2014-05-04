@@ -37,6 +37,6 @@ public class StateSetupQuickStart extends StateMainMenu {
         WorldInfo worldInfo = new WorldInfo(TerasologyConstants.MAIN_WORLD, gameManifest.getSeed(),
                 (long) (WorldTime.DAY_LENGTH * 0.025f), worldGeneratorUri);
         gameManifest.addWorld(worldInfo);
-        engine.changeState(new StateLoading(gameManifest, NetworkMode.SERVER));
+        engine.changeState(new StateLoading(gameManifest, NetworkMode.DEDICATED_SERVER));
     }
 }
