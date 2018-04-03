@@ -16,9 +16,7 @@
 
 package org.terasology.engine.subsystem.awt.cities;
 
-import javax.vecmath.Point2i;
-
-import org.terasology.math.Vector2i;
+import org.terasology.math.geom.Vector2i;
 
 /**
  * Defines a square-shaped terrain sector
@@ -31,12 +29,12 @@ public final class Sector {
      */
     public static final int SIZE = 1024;
 
-    private final Point2i coords;
+    private final Vector2i coords;
 
     /**
      * @param coords the coordinates
      */
-    Sector(Point2i coords) {
+    Sector(Vector2i coords) {
         if (coords == null) {
             throw new NullPointerException("coords cannot be null");
         }
@@ -47,7 +45,7 @@ public final class Sector {
     /**
      * @return the coordinates
      */
-    public Point2i getCoords() {
+    public Vector2i getCoords() {
         return coords;
     }
 
@@ -61,7 +59,7 @@ public final class Sector {
         int x = coords.x + v.x;
         int z = coords.y + v.y;
 
-        return Sectors.getSector(new Point2i(x, z));
+        return Sectors.getSector(new Vector2i(x, z));
     }
 
     @Override

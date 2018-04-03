@@ -16,7 +16,7 @@
 
 package org.terasology.engine.subsystem.awt.cities;
 
-import org.terasology.math.Vector2i;
+import org.terasology.math.geom.Vector2i;
 
 /**
  * A partial implementation of {@link HeightMap}

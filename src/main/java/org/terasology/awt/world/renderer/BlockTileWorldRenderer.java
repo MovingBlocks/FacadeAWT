@@ -28,14 +28,11 @@ import java.awt.image.BufferedImage;
 import java.awt.image.ImageObserver;
 import java.math.RoundingMode;
 import java.util.Map;
-
-import javax.vecmath.Point2i;
-import javax.vecmath.Vector2f;
-import javax.vecmath.Vector3f;
+import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.terasology.asset.Assets;
+import org.terasology.context.Context;
 import org.terasology.engine.ComponentSystemManager;
 import org.terasology.engine.subsystem.DisplayDevice;
 import org.terasology.engine.subsystem.awt.assets.AwtTexture;
@@ -53,23 +50,26 @@ import org.terasology.logic.inventory.ItemComponent;
 import org.terasology.logic.location.LocationComponent;
 import org.terasology.logic.players.LocalPlayer;
 import org.terasology.logic.players.LocalPlayerSystem;
-import org.terasology.math.Rect2f;
-import org.terasology.math.Rect2i;
 import org.terasology.math.TeraMath;
-import org.terasology.math.Vector2i;
-import org.terasology.math.Vector3i;
+import org.terasology.math.geom.Rect2f;
+import org.terasology.math.geom.Rect2i;
+import org.terasology.math.geom.Vector2f;
+import org.terasology.math.geom.Vector2i;
+import org.terasology.math.geom.Vector3f;
+import org.terasology.math.geom.Vector3i;
 import org.terasology.registry.CoreRegistry;
 import org.terasology.rendering.assets.texture.BasicTextureRegion;
 import org.terasology.rendering.assets.texture.Texture;
 import org.terasology.rendering.assets.texture.TextureRegion;
 import org.terasology.rendering.cameras.Camera;
 import org.terasology.rendering.nui.NUIManager;
+import org.terasology.utilities.Assets;
 import org.terasology.world.WorldProvider;
 import org.terasology.world.block.Block;
 import org.terasology.world.block.BlockAppearance;
 import org.terasology.world.block.BlockManager;
 import org.terasology.world.block.BlockPart;
-import org.terasology.world.block.loader.WorldAtlas;
+import org.terasology.world.block.tiles.WorldAtlas;
 import org.terasology.world.chunks.ChunkConstants;
 import org.terasology.world.chunks.ChunkProvider;
 import org.terasology.world.chunks.internal.ChunkImpl;
@@ -114,11 +114,15 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
         SQUARE,
         POINT
     }
-
-    public BlockTileWorldRenderer(WorldProvider worldProvider, ChunkProvider chunkProvider, LocalPlayerSystem localPlayerSystem) {
+    
+    public BlockTileWorldRenderer(Context context) {
+    	WorldProvider worldProvider;
+    	ChunkProvider chunkProvider;
+    	LocalPlayerSystem localPlayerSystem;
+    	
         super(worldProvider, chunkProvider, localPlayerSystem);
 
-        textureAtlas = Assets.getTexture("engine:terrain");
+        Texture textureAtlas = Assets.getTexture("engine:terrain");
 
         ComponentSystemManager componentSystemManager = CoreRegistry.get(ComponentSystemManager.class);
         WorldControlSystem worldControlSystem = new WorldControlSystem(this);
@@ -151,8 +155,8 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
         CharacterComponent characterComponent = entity.getComponent(CharacterComponent.class);
         LocationComponent location = entity.getComponent(LocationComponent.class);
 
-        Vector3f cameraPosition = new Vector3f();
-        cameraPosition.add(new Vector3f(location.getWorldPosition()), new Vector3f(0, characterComponent.eyeOffset, 0));
+        Vector3f cameraPosition = new Vector3f(location.getWorldPosition());
+        cameraPosition.add(new Vector3f(0, characterComponent.eyeOffset, 0));
         getActiveCamera().getPosition().set(cameraPosition);
     }
 
@@ -185,7 +189,7 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
 
         for (int z = -1; z < numZ; z++) {
             for (int x = -1; x < numX; x++) {
-                Point2i coord = new Point2i(x - camOffX, z - camOffZ);
+                Vector2i coord = new Vector2i(x - camOffX, z - camOffZ);
                 Sector sector = Sectors.getSector(coord);
                 drawGraphics.setClip(null); // mlk added
                 drawGraphics.setClip((x - camOffX) * Sector.SIZE, (z - camOffZ) * Sector.SIZE, Sector.SIZE, Sector.SIZE);

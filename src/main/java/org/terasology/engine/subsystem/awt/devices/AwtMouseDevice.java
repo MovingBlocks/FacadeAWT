@@ -16,17 +16,11 @@
 package org.terasology.engine.subsystem.awt.devices;
 
 import java.awt.Container;
-import java.awt.Dimension;
-import java.awt.MouseInfo;
-import java.awt.Point;
-import java.awt.PointerInfo;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Queue;
 
@@ -36,12 +30,10 @@ import javax.swing.SwingUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.terasology.input.ButtonState;
-import org.terasology.input.InputType;
 import org.terasology.input.MouseInput;
-import org.terasology.input.device.InputAction;
+import org.terasology.input.device.MouseAction;
 import org.terasology.input.device.MouseDevice;
-import org.terasology.math.Rect2i;
-import org.terasology.math.Vector2i;
+import org.terasology.math.geom.Vector2i;
 
 import com.google.common.collect.Maps;
 import com.google.common.collect.Queues;
@@ -56,7 +48,7 @@ public class AwtMouseDevice implements MouseDevice {
 
     private Map<MouseInput, Boolean> isDownByMouseButtonNumber = Maps.newHashMap();     // capacity 16
     
-    private Queue<InputAction> inputQueue = Queues.newArrayDeque();
+    private Queue<MouseAction> inputQueue = Queues.newArrayDeque();
     private Object inputQueueLock = new Object();
 
     public AwtMouseDevice(JFrame window) {
@@ -88,7 +80,7 @@ public class AwtMouseDevice implements MouseDevice {
                     MouseInput.WHEEL_DOWN;
                 
                 // TODO: need to determine if wheel button is pressed
-                InputAction event = new InputAction(input, Math.abs(wheelRotation), getPosition());
+                MouseAction event = new MouseAction(input, Math.abs(wheelRotation), getPosition());
                 synchronized (inputQueueLock) {
                     inputQueue.add(event);
                 }
@@ -113,7 +105,7 @@ public class AwtMouseDevice implements MouseDevice {
             @Override
             public void mouseReleased(MouseEvent e) {
                 MouseInput input = getMouseButtonNumberForMouseEvent(e);
-                InputAction event = new InputAction(input, ButtonState.UP, getPosition());
+                MouseAction event = new MouseAction(input, ButtonState.UP, getPosition());
                 synchronized (inputQueueLock) {
                     inputQueue.add(event);
                 }
@@ -123,7 +115,7 @@ public class AwtMouseDevice implements MouseDevice {
             @Override
             public void mousePressed(MouseEvent e) {
                 MouseInput input = getMouseButtonNumberForMouseEvent(e);
-                InputAction event = new InputAction(input, ButtonState.DOWN, getPosition());
+                MouseAction event = new MouseAction(input, ButtonState.DOWN, getPosition());
                 synchronized (inputQueueLock) {
                     inputQueue.add(event);
                 }
@@ -158,8 +150,8 @@ public class AwtMouseDevice implements MouseDevice {
     }
 
     @Override
-    public Queue<InputAction> getInputQueue() {
-        Queue<InputAction> oldInputQueue;
+    public Queue<MouseAction> getInputQueue() {
+        Queue<MouseAction> oldInputQueue;
         synchronized (inputQueueLock) {
             oldInputQueue = inputQueue;
             inputQueue = Queues.newArrayDeque();
@@ -174,4 +166,10 @@ public class AwtMouseDevice implements MouseDevice {
         // return !Mouse.isGrabbed();
     }
 
+    /**
+     * Specifies if the mouse is grabbed and there is thus no mouse cursor that can get to a border.
+     */
+    public void setGrabbed(boolean grabbed) {
+    	// TODO: NEW FUNCTIONALITY needed
+    }
 }

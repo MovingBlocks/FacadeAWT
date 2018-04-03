@@ -24,35 +24,25 @@ import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.terasology.asset.AbstractAsset;
-import org.terasology.asset.AssetUri;
-import org.terasology.math.Vector2i;
+import org.terasology.assets.AssetType;
+import org.terasology.assets.ResourceUrn;
+import org.terasology.math.geom.Vector2i;
 import org.terasology.rendering.assets.font.FontCharacter;
 import org.terasology.rendering.assets.font.FontData;
 
-public class AwtFont extends AbstractAsset<FontData> implements org.terasology.rendering.assets.font.Font {
+public class AwtFont extends org.terasology.rendering.assets.font.Font {
     private static final Logger logger = LoggerFactory.getLogger(AwtFont.class);
 
-    private FontData data;
+    protected FontData data;
 
-    public AwtFont(AssetUri uri, FontData data) {
-        super(uri);
+    public AwtFont(ResourceUrn urn, AssetType<?, FontData> assetType, FontData data) {
+        super(urn, assetType);
         reload(data);
     }
 
     @Override
-    public void reload(FontData fontData) {
+    protected void doReload(FontData fontData) {
         this.data = fontData;
-    }
-
-    @Override
-    public void dispose() {
-        this.data = null;
-    }
-
-    @Override
-    public boolean isDisposed() {
-        return data == null;
     }
 
     @Override
@@ -148,14 +138,29 @@ public class AwtFont extends AbstractAsset<FontData> implements org.terasology.r
     }
 
     public Font getAwtFont() {
-        if (getURI().toString().equals("font:engine:default")) {
+        if (getUrn().toString().equals("font:engine:default")) {
             return new java.awt.Font("DialogInput", java.awt.Font.BOLD, 14);
-        } else if (getURI().toString().equals("font:engine:title")) {
+        } else if (getUrn().toString().equals("font:engine:title")) {
             return new java.awt.Font("DialogInput", java.awt.Font.BOLD, 20);
         } else {
-            logger.warn("font " + getURI().toString() + " was not defined.");
+            logger.warn("font " + getUrn().toString() + " was not defined.");
         }
 
         return new java.awt.Font("DialogInput", java.awt.Font.BOLD, 14);
     }
+
+	@Override
+	public int getBaseHeight() {
+        return data.getBaseHeight();
+	}
+
+	@Override
+	public int getUnderlineOffset() {
+        return data.getUnderlineOffset();
+	}
+
+	@Override
+	public int getUnderlineThickness() {
+        return data.getUnderlineThickness();
+	}
 }

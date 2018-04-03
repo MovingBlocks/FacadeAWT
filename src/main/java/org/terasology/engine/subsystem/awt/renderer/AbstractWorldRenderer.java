@@ -28,17 +28,15 @@ import org.terasology.engine.subsystem.headless.renderer.NullCamera;
 import org.terasology.logic.players.LocalPlayer;
 import org.terasology.logic.players.LocalPlayerSystem;
 import org.terasology.math.AABB;
-import org.terasology.math.Rect2i;
+import org.terasology.math.geom.Rect2i;
 import org.terasology.monitoring.PerformanceMonitor;
 import org.terasology.physics.bullet.BulletPhysics;
 import org.terasology.physics.engine.PhysicsEngine;
 import org.terasology.registry.CoreRegistry;
+import org.terasology.rendering.backdrop.Skysphere;
 import org.terasology.rendering.cameras.Camera;
-import org.terasology.rendering.opengl.DefaultRenderingProcess.StereoRenderState;
-import org.terasology.rendering.world.Skysphere;
-import org.terasology.rendering.world.ViewDistance;
 import org.terasology.rendering.world.WorldRenderer;
-import org.terasology.world.WorldCommands;
+import org.terasology.rendering.world.viewDistance.ViewDistance;
 import org.terasology.world.WorldProvider;
 import org.terasology.world.chunks.ChunkConstants;
 import org.terasology.world.chunks.ChunkProvider;
@@ -75,9 +73,9 @@ public abstract class AbstractWorldRenderer implements WorldRenderer {
         config = CoreRegistry.get(Config.class);
         CoreRegistry.get(ComponentSystemManager.class).register(new WorldCommands(chunkProvider));
 
-        activeViewCamera = new NullCamera();
+        activeViewCamera = new NullCamera(worldProvider, renderingConfig);
 
-        localPlayerCamera = new NullCamera();
+        localPlayerCamera = new NullCamera(worldProvider, renderingConfig);
         localPlayerSystem.setPlayerCamera(localPlayerCamera);
     }
 
@@ -103,7 +101,7 @@ public abstract class AbstractWorldRenderer implements WorldRenderer {
 
     @Override
     public Camera getLightCamera() {
-        return new NullCamera();
+        return new NullCamera(worldProvider, renderingConfig);
     }
 
     /**

@@ -19,39 +19,40 @@ import java.nio.FloatBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.vecmath.Matrix3f;
-import javax.vecmath.Matrix4f;
-
-import org.terasology.asset.AssetUri;
+import org.terasology.assets.AssetType;
+import org.terasology.assets.ResourceUrn;
+import org.terasology.math.geom.Matrix3f;
+import org.terasology.math.geom.Matrix4f;
 import org.terasology.rendering.assets.material.BaseMaterial;
 import org.terasology.rendering.assets.material.MaterialData;
 import org.terasology.rendering.assets.shader.ShaderProgramFeature;
 import org.terasology.rendering.assets.texture.Texture;
 
+/**
+ * Apparently, we don't do anything with materials other than use them as a texture storehouse.
+ */
 public class AwtMaterial extends BaseMaterial {
-
-    private MaterialData data;
     private Map<String, Texture> textureMap = new HashMap<String, Texture>();
 
-    public AwtMaterial(AssetUri uri, MaterialData data) {
-        super(uri);
+    public AwtMaterial(ResourceUrn urn, AssetType<?, MaterialData> assetType, MaterialData data) {
+        super(urn, assetType);
         reload(data);
     }
 
-    @Override
-    public void reload(MaterialData newData) {
-        this.data = newData;
-    }
+	@Override
+	public boolean isRenderable() {
+        for (Texture texture : textureMap.values()) {
+            if (!texture.isLoaded()) {
+                return false;
+            }
+        }
+        return true;
+	}
 
-    @Override
-    public void dispose() {
-        data = null;
-    }
-
-    @Override
-    public boolean isDisposed() {
-        return data == null;
-    }
+	@Override
+	protected void doReload(MaterialData newData) {
+        textureMap.clear();
+	}
 
     @Override
     public void setTexture(String name, Texture texture) {

@@ -1,13 +1,12 @@
+import ch.qos.logback.classic.encoder.PatternLayoutEncoder
+import ch.qos.logback.classic.jul.LevelChangePropagator
+import org.terasology.engine.paths.PathManager
+
 import java.nio.file.Path
 import java.nio.file.Paths
 
-import static ch.qos.logback.classic.Level.*
-import org.terasology.engine.paths.PathManager
-import ch.qos.logback.classic.encoder.PatternLayoutEncoder
-import ch.qos.logback.core.status.OnConsoleStatusListener
-import ch.qos.logback.classic.jul.LevelChangePropagator
-import ch.qos.logback.core.FileAppender
-import ch.qos.logback.core.ConsoleAppender
+import static ch.qos.logback.classic.Level.DEBUG
+import static ch.qos.logback.classic.Level.INFO
 
 statusListener(OnConsoleStatusListener)
 context = new LevelChangePropagator()

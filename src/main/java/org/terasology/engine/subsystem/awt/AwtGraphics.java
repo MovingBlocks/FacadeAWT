@@ -19,18 +19,19 @@ import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
 import java.awt.image.BufferedImage;
+import java.util.Set;
 
 import javax.imageio.ImageIO;
 import javax.swing.JFrame;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.terasology.asset.AssetFactory;
-import org.terasology.asset.AssetManager;
-import org.terasology.asset.AssetType;
-import org.terasology.asset.AssetUri;
-import org.terasology.asset.sources.ClasspathSource;
+import org.terasology.assets.AssetFactory;
+import org.terasology.assets.AssetType;
+import org.terasology.assets.management.AssetManager;
+import org.terasology.assets.module.ModuleAwareAssetTypeManager;
 import org.terasology.config.Config;
+import org.terasology.context.Context;
 import org.terasology.engine.ComponentSystemManager;
 import org.terasology.engine.TerasologyConstants;
 import org.terasology.engine.modes.GameState;
@@ -45,9 +46,12 @@ import org.terasology.engine.subsystem.awt.devices.AwtKeyboardDevice;
 import org.terasology.engine.subsystem.awt.devices.AwtMouseDevice;
 import org.terasology.engine.subsystem.awt.renderer.AwtCanvasRenderer;
 import org.terasology.engine.subsystem.awt.renderer.AwtRenderingSubsystemFactory;
+import org.terasology.engine.subsystem.config.BindsManager;
+import org.terasology.engine.subsystem.headless.assets.HeadlessMaterial;
 import org.terasology.engine.subsystem.headless.assets.HeadlessMesh;
 import org.terasology.engine.subsystem.headless.assets.HeadlessShader;
 import org.terasology.engine.subsystem.headless.assets.HeadlessSkeletalMesh;
+import org.terasology.engine.subsystem.headless.assets.HeadlessTexture;
 import org.terasology.engine.subsystem.headless.renderer.ShaderManagerHeadless;
 import org.terasology.input.InputSystem;
 import org.terasology.logic.players.DebugControlSystem;
@@ -61,6 +65,7 @@ import org.terasology.rendering.assets.atlas.Atlas;
 import org.terasology.rendering.assets.atlas.AtlasData;
 import org.terasology.rendering.assets.font.Font;
 import org.terasology.rendering.assets.font.FontData;
+import org.terasology.rendering.assets.font.FontImpl;
 import org.terasology.rendering.assets.material.Material;
 import org.terasology.rendering.assets.material.MaterialData;
 import org.terasology.rendering.assets.mesh.Mesh;
@@ -69,12 +74,11 @@ import org.terasology.rendering.assets.shader.Shader;
 import org.terasology.rendering.assets.shader.ShaderData;
 import org.terasology.rendering.assets.skeletalmesh.SkeletalMesh;
 import org.terasology.rendering.assets.skeletalmesh.SkeletalMeshData;
-import org.terasology.rendering.assets.texture.ColorTextureAssetResolver;
+import org.terasology.rendering.assets.texture.PNGTextureFormat;
 import org.terasology.rendering.assets.texture.Texture;
 import org.terasology.rendering.assets.texture.TextureData;
 import org.terasology.rendering.assets.texture.subtexture.Subtexture;
 import org.terasology.rendering.assets.texture.subtexture.SubtextureData;
-import org.terasology.rendering.assets.texture.subtexture.SubtextureFromAtlasResolver;
 import org.terasology.rendering.nui.NUIManager;
 import org.terasology.rendering.nui.internal.NUIManagerInternal;
 
@@ -88,23 +92,24 @@ public class AwtGraphics implements EngineSubsystem {
     private AwtMouseDevice awtMouseDevice;
 
     @Override
-    public void preInitialise() {
+    public void preInitialise(Context rootContext) {
     }
 
     @Override
-    public void postInitialise(Config config) {
-        AssetManager assetManager = CoreRegistry.get(AssetManager.class);
+    public void postInitialise(Context rootContext) {
 
-        ClasspathSource sourceFacade = new ClasspathSource(
-                TerasologyConstants.ENGINE_MODULE,
-                getClass().getProtectionDomain().getCodeSource(), 
-                TerasologyConstants.ASSETS_SUBDIRECTORY, 
-                TerasologyConstants.OVERRIDES_SUBDIRECTORY,
-                TerasologyConstants.DELTAS_SUBDIRECTORY);
-        
-        assetManager.addAssetSource(sourceFacade);
+        // TODO: if needed, maybe handled with ModuleAwareAssetTypeManager.registerCoreAssetType()?
+//        AssetManager assetManager = CoreRegistry.get(AssetManager.class);
+//        ClasspathSource sourceFacade = new ClasspathSource(
+//                TerasologyConstants.ENGINE_MODULE,
+//                getClass().getProtectionDomain().getCodeSource(), 
+//                TerasologyConstants.ASSETS_SUBDIRECTORY, 
+//                TerasologyConstants.OVERRIDES_SUBDIRECTORY,
+//                TerasologyConstants.DELTAS_SUBDIRECTORY);
+//
+//        assetManager.addAssetSource(sourceFacade);
 
-        CoreRegistry.putPermanently(RenderingSubsystemFactory.class, new AwtRenderingSubsystemFactory());
+        CoreRegistry.put(RenderingSubsystemFactory.class, new AwtRenderingSubsystemFactory());
 
         GraphicsEnvironment env = GraphicsEnvironment.getLocalGraphicsEnvironment();
         GraphicsDevice device = env.getDefaultScreenDevice();
@@ -134,9 +139,7 @@ public class AwtGraphics implements EngineSubsystem {
 
         AwtDisplayDevice awtDisplay = new AwtDisplayDevice(mainFrame);
 
-        CoreRegistry.putPermanently(DisplayDevice.class, awtDisplay);
-
-        initHeadless(awtDisplay);
+        CoreRegistry.put(DisplayDevice.class, awtDisplay);
 
         // TODO: read from config?
         awtDisplay.setFullscreen(false);
@@ -147,14 +150,14 @@ public class AwtGraphics implements EngineSubsystem {
 
         AwtCanvasRenderer canvasRenderer = new AwtCanvasRenderer(mainFrame, awtDisplay);
 
-        NUIManagerInternal nuiManager = new NUIManagerInternal(canvasRenderer);
-        CoreRegistry.putPermanently(NUIManager.class, nuiManager);
+        NUIManagerInternal nuiManager = new NUIManagerInternal(canvasRenderer, rootContext);
+        CoreRegistry.put(NUIManager.class, nuiManager);
 
         //        CoreRegistry.putPermanently(DefaultRenderingProcess.class, new AwtRenderingProcess());
 
         // Input
         InputSystem inputSystem = new InputSystem();
-        CoreRegistry.putPermanently(InputSystem.class, inputSystem);
+        CoreRegistry.put(InputSystem.class, inputSystem);
 
         awtMouseDevice = new AwtMouseDevice(mainFrame);
         inputSystem.setMouseDevice(awtMouseDevice);
@@ -162,8 +165,13 @@ public class AwtGraphics implements EngineSubsystem {
         AwtKeyboardDevice awtKeyboardDevice = new AwtKeyboardDevice(mainFrame);
         inputSystem.setKeyboardDevice(awtKeyboardDevice);
 
-        config.getInput().getBinds().updateForChangedMods();
-        config.save();
+        updateInputConfig(rootContext);
+    }
+
+    private void updateInputConfig(Context context) {
+        BindsManager bindsManager = context.get(BindsManager.class);
+        bindsManager.updateConfigWithDefaultBinds();
+        bindsManager.saveBindsConfig();
     }
 
     @Override
@@ -178,11 +186,7 @@ public class AwtGraphics implements EngineSubsystem {
     }
 
     @Override
-    public void shutdown(Config config) {
-    }
-
-    @Override
-    public void dispose() {
+    public void shutdown() {
         GraphicsEnvironment env = GraphicsEnvironment.getLocalGraphicsEnvironment();
         GraphicsDevice device = env.getDefaultScreenDevice();
         device.setFullScreenWindow(null);
@@ -190,65 +194,23 @@ public class AwtGraphics implements EngineSubsystem {
         mainFrame.dispose();
     }
 
-    private void initHeadless(AwtDisplayDevice awtDisplay) {
-        AssetManager assetManager = CoreRegistry.get(AssetManager.class);
-        assetManager.setAssetFactory(AssetType.TEXTURE, new AssetFactory<TextureData, Texture>() {
-            @Override
-            public Texture buildAsset(AssetUri uri, TextureData data) {
-                return new AwtTexture(uri, data);
-            }
-        });
-        assetManager.setAssetFactory(AssetType.FONT, new AssetFactory<FontData, Font>() {
-            @Override
-            public Font buildAsset(AssetUri uri, FontData data) {
-                return new AwtFont(uri, data);
-            }
-        });
-        assetManager.setAssetFactory(AssetType.SHADER, new AssetFactory<ShaderData, Shader>() {
-            @Override
-            public Shader buildAsset(AssetUri uri, ShaderData data) {
-                return new HeadlessShader(uri, data);
-            }
-        });
-        assetManager.setAssetFactory(AssetType.MATERIAL, new AssetFactory<MaterialData, Material>() {
-            @Override
-            public Material buildAsset(AssetUri uri, MaterialData data) {
-                return new AwtMaterial(uri, data);
-            }
-        });
-        assetManager.setAssetFactory(AssetType.MESH, new AssetFactory<MeshData, Mesh>() {
-            @Override
-            public Mesh buildAsset(AssetUri uri, MeshData data) {
-                return new HeadlessMesh(uri, data);
-            }
-        });
-        assetManager.setAssetFactory(AssetType.SKELETON_MESH, new AssetFactory<SkeletalMeshData, SkeletalMesh>() {
-            @Override
-            public SkeletalMesh buildAsset(AssetUri uri, SkeletalMeshData data) {
-                return new HeadlessSkeletalMesh(uri, data);
-            }
-        });
-        assetManager.setAssetFactory(AssetType.ANIMATION, new AssetFactory<MeshAnimationData, MeshAnimation>() {
-            @Override
-            public MeshAnimation buildAsset(AssetUri uri, MeshAnimationData data) {
-                return new MeshAnimationImpl(uri, data);
-            }
-        });
-        assetManager.setAssetFactory(AssetType.ATLAS, new AssetFactory<AtlasData, Atlas>() {
-            @Override
-            public Atlas buildAsset(AssetUri uri, AtlasData data) {
-                return new Atlas(uri, data);
-            }
-        });
-        assetManager.setAssetFactory(AssetType.SUBTEXTURE, new AssetFactory<SubtextureData, Subtexture>() {
-            @Override
-            public Subtexture buildAsset(AssetUri uri, SubtextureData data) {
-                return new Subtexture(uri, data);
-            }
-        });
-        assetManager.addResolver(AssetType.SUBTEXTURE, new SubtextureFromAtlasResolver());
-        assetManager.addResolver(AssetType.TEXTURE, new ColorTextureAssetResolver());
-        CoreRegistry.putPermanently(ShaderManager.class, new ShaderManagerHeadless());
+    @Override
+    public void registerCoreAssetTypes(ModuleAwareAssetTypeManager assetTypeManager) {
+        assetTypeManager.registerCoreAssetType(Font.class, (AssetFactory<Font, FontData>) AwtFont::new, "fonts");
+        assetTypeManager.registerCoreAssetType(Texture.class, (AssetFactory<Texture, TextureData>) AwtTexture::new, "textures", "fonts");
+        assetTypeManager.registerCoreFormat(Texture.class, new PNGTextureFormat(Texture.FilterMode.NEAREST, path -> path.getName(2).toString().equals("textures")));
+        assetTypeManager.registerCoreFormat(Texture.class, new PNGTextureFormat(Texture.FilterMode.LINEAR, path -> path.getName(2).toString().equals("fonts")));
+        assetTypeManager.registerCoreAssetType(Shader.class, (AssetFactory<Shader, ShaderData>) HeadlessShader::new, "shaders");
+        assetTypeManager.registerCoreAssetType(Material.class, (AssetFactory<Material, MaterialData>) AwtMaterial::new, "materials");
+        assetTypeManager.registerCoreAssetType(Mesh.class, (AssetFactory<Mesh, MeshData>) HeadlessMesh::new, "mesh");
+        assetTypeManager.registerCoreAssetType(SkeletalMesh.class, (AssetFactory<SkeletalMesh, SkeletalMeshData>) HeadlessSkeletalMesh::new, "skeletalMesh");
+        assetTypeManager.registerCoreAssetType(MeshAnimation.class, (AssetFactory<MeshAnimation, MeshAnimationData>) MeshAnimationImpl::new, "animations");
+        assetTypeManager.registerCoreAssetType(Atlas.class, (AssetFactory<Atlas, AtlasData>) Atlas::new, "atlas");
+        assetTypeManager.registerCoreAssetType(Subtexture.class, (AssetFactory<Subtexture, SubtextureData>) Subtexture::new);
+        
+        // TODO: unclear if something along these lines is still needed
+//        assetManager.addResolver(AssetType.SUBTEXTURE, new SubtextureFromAtlasResolver());
+//        assetManager.addResolver(AssetType.TEXTURE, new ColorTextureAssetResolver());
     }
 
     @Override
@@ -256,4 +218,9 @@ public class AwtGraphics implements EngineSubsystem {
         componentSystemManager.register(new MenuControlSystem(), "engine:MenuControlSystem");
         componentSystemManager.register(new DebugControlSystem(), "engine:DebugControlSystem");
     }
+
+	@Override
+	public String getName() {
+        return "Graphics";
+	}
 }

@@ -29,8 +29,10 @@ import org.terasology.config.Config;
 import org.terasology.config.RenderingConfig;
 import org.terasology.engine.subsystem.DisplayDevice;
 import org.terasology.registry.CoreRegistry;
+import org.terasology.rendering.nui.layers.mainMenu.videoSettings.DisplayModeSetting;
+import org.terasology.utilities.subscribables.AbstractSubscribable;
 
-public class AwtDisplayDevice implements DisplayDevice {
+public class AwtDisplayDevice extends AbstractSubscribable implements DisplayDevice {
 
     private final JFrame mainFrame;
     private boolean isCloseRequested;
@@ -38,6 +40,8 @@ public class AwtDisplayDevice implements DisplayDevice {
     private Graphics drawGraphics;
     private int translatedX;
     private int translatedY;
+    
+    private DisplayModeSetting displayModeSetting;
 
     public AwtDisplayDevice(JFrame window) {
         this.mainFrame = window;
@@ -54,11 +58,6 @@ public class AwtDisplayDevice implements DisplayDevice {
     }
 
     @Override
-    public boolean isActive() {
-        return mainFrame.isActive();
-    }
-
-    @Override
     public boolean isCloseRequested() {
         return isCloseRequested;
     }
@@ -69,6 +68,7 @@ public class AwtDisplayDevice implements DisplayDevice {
         GraphicsDevice device = env.getDefaultScreenDevice();
         if (state && device.isFullScreenSupported()) {
             device.setFullScreenWindow(mainFrame);
+            this.displayModeSetting = DisplayModeSetting.FULLSCREEN;
         } else {
             Config config = CoreRegistry.get(Config.class);
             RenderingConfig rc = config.getRendering();
@@ -81,6 +81,7 @@ public class AwtDisplayDevice implements DisplayDevice {
             mainFrame.setLocation(rc.getWindowPosX(), rc.getWindowPosY());
             mainFrame.pack();
             mainFrame.setVisible(true);
+            this.displayModeSetting = DisplayModeSetting.WINDOWED;
         }
     }
 
@@ -128,4 +129,28 @@ public class AwtDisplayDevice implements DisplayDevice {
         drawGraphics.dispose();
         drawGraphics = null;
     }
+
+	@Override
+	public boolean isFullscreen() {
+		return displayModeSetting == DisplayModeSetting.FULLSCREEN;
+	}
+
+	@Override
+	public void setDisplayModeSetting(DisplayModeSetting displayModeSetting) {
+		this.displayModeSetting = displayModeSetting;
+	}
+
+	@Override
+	public DisplayModeSetting getDisplayModeSetting() {
+		return displayModeSetting;
+	}
+
+    @Override
+    public void update() {
+    }
+
+	@Override
+	public boolean hasFocus() {
+		return mainFrame.hasFocus();
+	}
 }
