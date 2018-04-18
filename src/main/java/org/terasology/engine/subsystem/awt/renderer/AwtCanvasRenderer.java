@@ -31,6 +31,7 @@ import java.text.AttributedString;
 import javax.swing.JFrame;
 
 import org.terasology.assets.ResourceUrn;
+import org.terasology.context.Context;
 import org.terasology.engine.subsystem.awt.assets.AwtFont;
 import org.terasology.engine.subsystem.awt.assets.AwtMaterial;
 import org.terasology.engine.subsystem.awt.assets.AwtTexture;
@@ -46,7 +47,6 @@ import org.terasology.math.geom.Vector2f;
 import org.terasology.math.geom.Vector2i;
 import org.terasology.math.geom.Vector3f;
 import org.terasology.naming.Name;
-import org.terasology.registry.CoreRegistry;
 import org.terasology.rendering.assets.font.Font;
 import org.terasology.rendering.assets.material.Material;
 import org.terasology.rendering.assets.mesh.Mesh;
@@ -73,11 +73,13 @@ import org.terasology.world.block.tiles.WorldAtlas;
 public class AwtCanvasRenderer implements CanvasRenderer {
 
     private JFrame window;
-
+    private Context context;
+    
     private Graphics drawGraphics;
     private AwtDisplayDevice awtDisplayDevice;
 
-    public AwtCanvasRenderer(JFrame window, AwtDisplayDevice awtDisplayDevice) {
+    public AwtCanvasRenderer(JFrame window, AwtDisplayDevice awtDisplayDevice, Context context) {
+    	this.context = context;
         this.window = window;
         this.awtDisplayDevice = awtDisplayDevice;
     }
@@ -103,7 +105,7 @@ public class AwtCanvasRenderer implements CanvasRenderer {
 
         Vector2f textureAtlasPos;
 
-        BlockManager blockManager = CoreRegistry.get(BlockManager.class);
+        BlockManager blockManager = context.get(BlockManager.class);
         ResourceUrn meshUrn = mesh.getUrn();
         BlockUri blockUri = new BlockUri(meshUrn);
 
@@ -126,7 +128,7 @@ public class AwtCanvasRenderer implements CanvasRenderer {
             textureAtlasPos = primaryAppearance.getTextureAtlasPos(blockPart);
         }
 
-        WorldAtlas worldAtlas = CoreRegistry.get(WorldAtlas.class);
+        WorldAtlas worldAtlas = context.get(WorldAtlas.class);
         float tileSize = worldAtlas.getRelativeTileSize();
 
         float ux = 0f;

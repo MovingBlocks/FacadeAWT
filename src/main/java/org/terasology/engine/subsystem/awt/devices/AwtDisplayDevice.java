@@ -27,14 +27,16 @@ import javax.swing.JFrame;
 
 import org.terasology.config.Config;
 import org.terasology.config.RenderingConfig;
+import org.terasology.context.Context;
 import org.terasology.engine.subsystem.DisplayDevice;
-import org.terasology.registry.CoreRegistry;
 import org.terasology.rendering.nui.layers.mainMenu.videoSettings.DisplayModeSetting;
 import org.terasology.utilities.subscribables.AbstractSubscribable;
 
 public class AwtDisplayDevice extends AbstractSubscribable implements DisplayDevice {
 
     private final JFrame mainFrame;
+    private Context context;
+    
     private boolean isCloseRequested;
 
     private Graphics drawGraphics;
@@ -43,8 +45,9 @@ public class AwtDisplayDevice extends AbstractSubscribable implements DisplayDev
     
     private DisplayModeSetting displayModeSetting;
 
-    public AwtDisplayDevice(JFrame window) {
+    public AwtDisplayDevice(JFrame window, Context context) {
         this.mainFrame = window;
+        this.context = context;
 
         mainFrame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 
@@ -70,7 +73,7 @@ public class AwtDisplayDevice extends AbstractSubscribable implements DisplayDev
             device.setFullScreenWindow(mainFrame);
             this.displayModeSetting = DisplayModeSetting.FULLSCREEN;
         } else {
-            Config config = CoreRegistry.get(Config.class);
+            Config config = context.get(Config.class);
             RenderingConfig rc = config.getRendering();
 
             // proceed in non-full-screen mode

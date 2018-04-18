@@ -4,6 +4,7 @@ import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.terasology.context.Context;
 import org.terasology.entitySystem.entity.EntityManager;
 import org.terasology.entitySystem.entity.EntityRef;
 import org.terasology.input.MouseInput;
@@ -11,7 +12,6 @@ import org.terasology.logic.selection.ApplyBlockSelectionEvent;
 import org.terasology.math.Region3i;
 import org.terasology.math.geom.Vector2i;
 import org.terasology.math.geom.Vector3i;
-import org.terasology.registry.CoreRegistry;
 import org.terasology.rendering.assets.texture.Texture;
 import org.terasology.rendering.assets.texture.TextureUtil;
 import org.terasology.rendering.nui.BaseInteractionListener;
@@ -31,7 +31,13 @@ public class WorldSelectionScreen extends CoreHudWidget {
 
     private static final Logger logger = LoggerFactory.getLogger(WorldSelectionScreen.class);
 
-    private BlockTileWorldRenderer renderer;
+    private Context context;
+    
+    public void setContext(Context context) {
+		this.context = context;
+	}
+
+	private BlockTileWorldRenderer renderer;
 
     private EntityRef blockSelectionEntity;
 
@@ -80,7 +86,7 @@ public class WorldSelectionScreen extends CoreHudWidget {
 
                 BlockSelectionComponent blockSelectionComponent;
                 if (EntityRef.NULL == blockSelectionEntity) {
-                    EntityManager entityManager = CoreRegistry.get(EntityManager.class);
+                    EntityManager entityManager = context.get(EntityManager.class);
                     blockSelectionComponent = new BlockSelectionComponent();
                     blockSelectionComponent.shouldRender = true;
 

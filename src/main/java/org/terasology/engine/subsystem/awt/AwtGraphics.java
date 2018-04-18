@@ -19,7 +19,6 @@ import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
 import java.awt.image.BufferedImage;
-import java.util.Set;
 
 import javax.imageio.ImageIO;
 import javax.swing.JFrame;
@@ -27,13 +26,9 @@ import javax.swing.JFrame;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.terasology.assets.AssetFactory;
-import org.terasology.assets.AssetType;
-import org.terasology.assets.management.AssetManager;
 import org.terasology.assets.module.ModuleAwareAssetTypeManager;
-import org.terasology.config.Config;
 import org.terasology.context.Context;
 import org.terasology.engine.ComponentSystemManager;
-import org.terasology.engine.TerasologyConstants;
 import org.terasology.engine.modes.GameState;
 import org.terasology.engine.subsystem.DisplayDevice;
 import org.terasology.engine.subsystem.EngineSubsystem;
@@ -47,17 +42,12 @@ import org.terasology.engine.subsystem.awt.devices.AwtMouseDevice;
 import org.terasology.engine.subsystem.awt.renderer.AwtCanvasRenderer;
 import org.terasology.engine.subsystem.awt.renderer.AwtRenderingSubsystemFactory;
 import org.terasology.engine.subsystem.config.BindsManager;
-import org.terasology.engine.subsystem.headless.assets.HeadlessMaterial;
 import org.terasology.engine.subsystem.headless.assets.HeadlessMesh;
 import org.terasology.engine.subsystem.headless.assets.HeadlessShader;
 import org.terasology.engine.subsystem.headless.assets.HeadlessSkeletalMesh;
-import org.terasology.engine.subsystem.headless.assets.HeadlessTexture;
-import org.terasology.engine.subsystem.headless.renderer.ShaderManagerHeadless;
 import org.terasology.input.InputSystem;
 import org.terasology.logic.players.DebugControlSystem;
 import org.terasology.logic.players.MenuControlSystem;
-import org.terasology.registry.CoreRegistry;
-import org.terasology.rendering.ShaderManager;
 import org.terasology.rendering.assets.animation.MeshAnimation;
 import org.terasology.rendering.assets.animation.MeshAnimationData;
 import org.terasology.rendering.assets.animation.MeshAnimationImpl;
@@ -65,7 +55,6 @@ import org.terasology.rendering.assets.atlas.Atlas;
 import org.terasology.rendering.assets.atlas.AtlasData;
 import org.terasology.rendering.assets.font.Font;
 import org.terasology.rendering.assets.font.FontData;
-import org.terasology.rendering.assets.font.FontImpl;
 import org.terasology.rendering.assets.material.Material;
 import org.terasology.rendering.assets.material.MaterialData;
 import org.terasology.rendering.assets.mesh.Mesh;
@@ -80,6 +69,7 @@ import org.terasology.rendering.assets.texture.TextureData;
 import org.terasology.rendering.assets.texture.subtexture.Subtexture;
 import org.terasology.rendering.assets.texture.subtexture.SubtextureData;
 import org.terasology.rendering.nui.NUIManager;
+import org.terasology.rendering.nui.internal.CanvasRenderer;
 import org.terasology.rendering.nui.internal.NUIManagerInternal;
 
 import com.google.common.collect.ImmutableList;
@@ -109,7 +99,7 @@ public class AwtGraphics implements EngineSubsystem {
 //
 //        assetManager.addAssetSource(sourceFacade);
 
-        CoreRegistry.put(RenderingSubsystemFactory.class, new AwtRenderingSubsystemFactory());
+        rootContext.put(RenderingSubsystemFactory.class, new AwtRenderingSubsystemFactory());
 
         GraphicsEnvironment env = GraphicsEnvironment.getLocalGraphicsEnvironment();
         GraphicsDevice device = env.getDefaultScreenDevice();
@@ -137,9 +127,9 @@ public class AwtGraphics implements EngineSubsystem {
         
         mainFrame.setTitle("Terasology" + " | " + "Pre Alpha");
 
-        AwtDisplayDevice awtDisplay = new AwtDisplayDevice(mainFrame);
+        AwtDisplayDevice awtDisplay = new AwtDisplayDevice(mainFrame, rootContext);
 
-        CoreRegistry.put(DisplayDevice.class, awtDisplay);
+        rootContext.put(DisplayDevice.class, awtDisplay);
 
         // TODO: read from config?
         awtDisplay.setFullscreen(false);
@@ -148,16 +138,14 @@ public class AwtGraphics implements EngineSubsystem {
         mainFrame.setVisible(true);
         mainFrame.createBufferStrategy(2);
 
-        AwtCanvasRenderer canvasRenderer = new AwtCanvasRenderer(mainFrame, awtDisplay);
+        AwtCanvasRenderer canvasRenderer = new AwtCanvasRenderer(mainFrame, awtDisplay, rootContext);
+        rootContext.put(CanvasRenderer.class, canvasRenderer);
 
-        NUIManagerInternal nuiManager = new NUIManagerInternal(canvasRenderer, rootContext);
-        CoreRegistry.put(NUIManager.class, nuiManager);
-
-        //        CoreRegistry.putPermanently(DefaultRenderingProcess.class, new AwtRenderingProcess());
+        // CoreRegistry.putPermanently(DefaultRenderingProcess.class, new AwtRenderingProcess());
 
         // Input
         InputSystem inputSystem = new InputSystem();
-        CoreRegistry.put(InputSystem.class, inputSystem);
+        rootContext.put(InputSystem.class, inputSystem);
 
         awtMouseDevice = new AwtMouseDevice(mainFrame);
         inputSystem.setMouseDevice(awtMouseDevice);
@@ -166,6 +154,12 @@ public class AwtGraphics implements EngineSubsystem {
         inputSystem.setKeyboardDevice(awtKeyboardDevice);
 
         updateInputConfig(rootContext);
+
+        // Input system must be initialized first
+        NUIManagerInternal nuiManager = new NUIManagerInternal(canvasRenderer, rootContext);
+        rootContext.put(NUIManager.class, nuiManager);
+
+
     }
 
     private void updateInputConfig(Context context) {
