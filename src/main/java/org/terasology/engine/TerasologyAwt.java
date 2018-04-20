@@ -64,10 +64,12 @@ public final class TerasologyAwt {
             TerasologyEngineBuilder builder = new TerasologyEngineBuilder();
             populateSubsystems(builder);
             TerasologyEngine engine = builder.build();
+            engine.addToClassesOnClasspathsToAddToEngine(TerasologyAwt.class);
             engine.run(quickstart ? new StateSetupQuickStart() : new StateMainMenu());
         } catch (Throwable t) {
             String text = getNestedMessageText(t);
             JOptionPane.showMessageDialog(null, text, "Fatal Error", JOptionPane.ERROR_MESSAGE);
+            t.printStackTrace(System.err);
         }
         System.exit(0);
     }
