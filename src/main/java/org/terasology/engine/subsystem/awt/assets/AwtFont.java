@@ -138,12 +138,20 @@ public class AwtFont extends org.terasology.rendering.assets.font.Font {
     }
 
     public Font getAwtFont() {
-        if (getUrn().toString().equals("font:engine:default")) {
+        if (getUrn().toString().equals("engine:default")) {
             return new java.awt.Font("DialogInput", java.awt.Font.BOLD, 14);
-        } else if (getUrn().toString().equals("font:engine:title")) {
+        } else if (getUrn().toString().equals("engine:title")) {
+            return new java.awt.Font("DialogInput", java.awt.Font.BOLD, 20);
+        } else if (getUrn().toString().equals("engine:NotoSans-Regular")) {
+            return new java.awt.Font("DialogInput", java.awt.Font.PLAIN, 20);
+        } else if (getUrn().toString().equals("engine:NotoSans-Regular-Medium")) {
+            return new java.awt.Font("DialogInput", java.awt.Font.PLAIN, 36);
+        } else if (getUrn().toString().equals("engine:NotoSans-Regular-Large")) {
+            return new java.awt.Font("DialogInput", java.awt.Font.PLAIN, 52);
+        } else if (getUrn().toString().equals("engine:NotoSans-Bold")) {
             return new java.awt.Font("DialogInput", java.awt.Font.BOLD, 20);
         } else {
-            logger.warn("font " + getUrn().toString() + " was not defined.");
+            logger.warn("font '" + getUrn().toString() + "' was not defined.");
         }
 
         return new java.awt.Font("DialogInput", java.awt.Font.BOLD, 14);
