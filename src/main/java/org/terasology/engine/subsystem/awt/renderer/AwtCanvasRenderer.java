@@ -29,21 +29,24 @@ import java.text.AttributedCharacterIterator;
 import java.text.AttributedString;
 
 import javax.swing.JFrame;
-import javax.vecmath.Quat4f;
-import javax.vecmath.Vector2f;
-import javax.vecmath.Vector3f;
 
-import org.terasology.asset.AssetUri;
+import org.terasology.assets.ResourceUrn;
+import org.terasology.context.Context;
 import org.terasology.engine.subsystem.awt.assets.AwtFont;
 import org.terasology.engine.subsystem.awt.assets.AwtMaterial;
 import org.terasology.engine.subsystem.awt.assets.AwtTexture;
 import org.terasology.engine.subsystem.awt.assets.AwtTexture.BufferedImageCacheKey;
 import org.terasology.engine.subsystem.awt.devices.AwtDisplayDevice;
 import org.terasology.math.Border;
-import org.terasology.math.Rect2f;
-import org.terasology.math.Rect2i;
 import org.terasology.math.TeraMath;
-import org.terasology.math.Vector2i;
+import org.terasology.math.geom.BaseVector2i;
+import org.terasology.math.geom.Quat4f;
+import org.terasology.math.geom.Rect2f;
+import org.terasology.math.geom.Rect2i;
+import org.terasology.math.geom.Vector2f;
+import org.terasology.math.geom.Vector2i;
+import org.terasology.math.geom.Vector3f;
+import org.terasology.naming.Name;
 import org.terasology.registry.CoreRegistry;
 import org.terasology.rendering.assets.font.Font;
 import org.terasology.rendering.assets.material.Material;
@@ -63,7 +66,8 @@ import org.terasology.world.block.BlockManager;
 import org.terasology.world.block.BlockPart;
 import org.terasology.world.block.BlockUri;
 import org.terasology.world.block.family.BlockFamily;
-import org.terasology.world.block.loader.WorldAtlas;
+import org.terasology.world.block.family.BlockFamilyFactoryRegistry;
+import org.terasology.world.block.tiles.WorldAtlas;
 
 /**
  * @author mkienenb
@@ -71,11 +75,13 @@ import org.terasology.world.block.loader.WorldAtlas;
 public class AwtCanvasRenderer implements CanvasRenderer {
 
     private JFrame window;
-
+    private Context context;
+    
     private Graphics drawGraphics;
     private AwtDisplayDevice awtDisplayDevice;
 
-    public AwtCanvasRenderer(JFrame window, AwtDisplayDevice awtDisplayDevice) {
+    public AwtCanvasRenderer(JFrame window, AwtDisplayDevice awtDisplayDevice, Context context) {
+    	this.context = context;
         this.window = window;
         this.awtDisplayDevice = awtDisplayDevice;
     }
@@ -101,25 +107,25 @@ public class AwtCanvasRenderer implements CanvasRenderer {
 
         Vector2f textureAtlasPos;
 
-        BlockManager blockManager = CoreRegistry.get(BlockManager.class);
-        AssetUri meshUri = mesh.getURI();
-        String assetName = meshUri.getAssetName();
-        if (assetName.contains(".")) {
-            String familyName = assetName.substring(0, assetName.indexOf('.'));
+        BlockManager blockManager = context.get(BlockManager.class);
+        if (null == blockManager) {
+            blockManager = CoreRegistry.get(BlockManager.class);
+        }
+        ResourceUrn meshUrn = mesh.getUrn(); // engine:blockmesh#core:Torch.TOP
+        Name blockFragmentNameConvert = meshUrn.getFragmentName(); // core:Torch.TOP
+        BlockUri blockUri = new BlockUri(blockFragmentNameConvert.toLowerCase());
+        Name blockFragmentName = blockUri.getIdentifier();
 
-            BlockUri blockUri = new BlockUri(meshUri.getModuleName(), familyName);
+		if (!blockFragmentName.isEmpty()) {
             BlockFamily blockFamily = blockManager.getBlockFamily(blockUri); // mesh:Core:Torch.TOP
             Block archetypeBlock = blockFamily.getArchetypeBlock();
             BlockAppearance primaryAppearance = archetypeBlock.getPrimaryAppearance();
 
-            String blockPartName = assetName.substring(assetName.indexOf('.') + 1);
+            String blockPartName = blockFragmentName.toUpperCase();
             BlockPart blockPart = BlockPart.valueOf(blockPartName);
 
             textureAtlasPos = primaryAppearance.getTextureAtlasPos(blockPart);
         } else {
-            String familyName = assetName;
-            BlockUri blockUri = new BlockUri(meshUri.getModuleName(), familyName);
-
             BlockFamily blockFamily = blockManager.getBlockFamily(blockUri); // mesh:Core:Torch.TOP
             Block archetypeBlock = blockFamily.getArchetypeBlock();
             BlockAppearance primaryAppearance = archetypeBlock.getPrimaryAppearance();
@@ -128,7 +134,10 @@ public class AwtCanvasRenderer implements CanvasRenderer {
             textureAtlasPos = primaryAppearance.getTextureAtlasPos(blockPart);
         }
 
-        WorldAtlas worldAtlas = CoreRegistry.get(WorldAtlas.class);
+        WorldAtlas worldAtlas = context.get(WorldAtlas.class);
+        if (null == worldAtlas) {
+            worldAtlas = CoreRegistry.get(WorldAtlas.class);
+        }
         float tileSize = worldAtlas.getRelativeTileSize();
 
         float ux = 0f;
@@ -276,10 +285,9 @@ public class AwtCanvasRenderer implements CanvasRenderer {
     }
 
     @Override
-    public void drawText(String text, Font font,
-                         HorizontalAlign hAlign, VerticalAlign vAlign,
-                         Rect2i absoluteRegion,
-                         Color color, Color shadowColor, float alpha) {
+    public void drawText(String text, Font font, HorizontalAlign hAlign, VerticalAlign vAlign, Rect2i absoluteRegion, Color color,
+            Color shadowColor, float alpha, boolean underlined) {
+    	// TODO: did not use underlined yet.
         java.awt.Font javaAwtFont = ((AwtFont) font).getAwtFont();
 
         if (shadowColor.a() != 0) {
@@ -409,7 +417,7 @@ public class AwtCanvasRenderer implements CanvasRenderer {
     }
 
     @Override
-    public FrameBufferObject getFBO(AssetUri uri, Vector2i region) {
+    public FrameBufferObject getFBO(ResourceUrn urn, BaseVector2i size) {
         return null;
     }
     

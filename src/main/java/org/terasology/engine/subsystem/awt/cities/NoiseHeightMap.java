@@ -38,7 +38,7 @@ public class NoiseHeightMap extends HeightMapAdapter {
     @Override
     public int apply(int x, int z) {
         int val = 7;
-        val += (int) (terrainNoise.noise(x / 1000d, z / 1000d) * 8d);
+        val += (int) (terrainNoise.noise(x / 1000f, z / 1000f) * 8f);
 
         if (val < 1) {
             val = 1;

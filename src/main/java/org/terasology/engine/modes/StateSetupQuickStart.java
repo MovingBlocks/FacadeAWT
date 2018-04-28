@@ -4,11 +4,11 @@ import org.terasology.config.Config;
 import org.terasology.engine.GameEngine;
 import org.terasology.engine.SimpleUri;
 import org.terasology.engine.TerasologyConstants;
-import org.terasology.engine.module.Module;
 import org.terasology.engine.module.ModuleManager;
 import org.terasology.game.GameManifest;
+import org.terasology.module.Module;
+import org.terasology.naming.Name;
 import org.terasology.network.NetworkMode;
-import org.terasology.registry.CoreRegistry;
 import org.terasology.world.internal.WorldInfo;
 import org.terasology.world.time.WorldTime;
 
@@ -23,10 +23,10 @@ public class StateSetupQuickStart extends StateMainMenu {
         gameManifest.setTitle("quick-start");
         gameManifest.setSeed("quick-start");
 
-        Config config = CoreRegistry.get(Config.class);
-        ModuleManager moduleManager = CoreRegistry.get(ModuleManager.class);
-        for (String moduleName : config.getDefaultModSelection().listModules()) {
-            Module module = moduleManager.getLatestModuleVersion(moduleName);
+        Config config = getContext().get(Config.class);
+        ModuleManager moduleManager = getContext().get(ModuleManager.class);
+        for (Name moduleName : config.getDefaultModSelection().listModules()) {
+            Module module = moduleManager.getRegistry().getLatestModuleVersion(moduleName);
             if (module != null) {
                 gameManifest.addModule(module.getId(), module.getVersion());
             }

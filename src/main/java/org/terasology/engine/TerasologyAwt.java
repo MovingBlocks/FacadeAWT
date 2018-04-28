@@ -17,18 +17,17 @@ package org.terasology.engine;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Collection;
 
 import javax.swing.JOptionPane;
 
 import org.terasology.engine.modes.StateMainMenu;
+import org.terasology.engine.modes.StateSetupQuickStart;
 import org.terasology.engine.paths.PathManager;
-import org.terasology.engine.subsystem.EngineSubsystem;
 import org.terasology.engine.subsystem.awt.AwtGraphics;
+import org.terasology.engine.subsystem.common.hibernation.HibernationSubsystem;
+import org.terasology.engine.subsystem.config.BindsSubsystem;
 import org.terasology.engine.subsystem.headless.HeadlessAudio;
 import org.terasology.engine.subsystem.headless.HeadlessTimer;
-
-import com.google.common.collect.Lists;
 
 /**
  * Main method for launching Terasology
@@ -59,18 +58,28 @@ public final class TerasologyAwt {
                 PathManager.getInstance().useDefaultHomePath();
             }
 
-            Collection<EngineSubsystem> subsystemList = Lists.<EngineSubsystem>newArrayList(
-                    new AwtGraphics(), new HeadlessTimer(), new HeadlessAudio());
-
-            TerasologyEngine engine = new TerasologyEngine(subsystemList);
-            engine.init();
-            engine.run(new StateMainMenu());
-            engine.dispose();
+            // TODO: parse quickStart arg
+            boolean quickstart = true;
+            
+            TerasologyEngineBuilder builder = new TerasologyEngineBuilder();
+            populateSubsystems(builder);
+            TerasologyEngine engine = builder.build();
+            engine.addToClassesOnClasspathsToAddToEngine(TerasologyAwt.class);
+            engine.run(quickstart ? new StateSetupQuickStart() : new StateMainMenu());
         } catch (Throwable t) {
             String text = getNestedMessageText(t);
             JOptionPane.showMessageDialog(null, text, "Fatal Error", JOptionPane.ERROR_MESSAGE);
+            t.printStackTrace(System.err);
         }
         System.exit(0);
+    }
+
+    private static void populateSubsystems(TerasologyEngineBuilder builder) {
+        builder.add(new AwtGraphics())
+                .add(new HeadlessTimer())
+                .add(new HeadlessAudio())
+                .add(new BindsSubsystem())
+                .add(new HibernationSubsystem());
     }
 
     private static String getNestedMessageText(Throwable t) {

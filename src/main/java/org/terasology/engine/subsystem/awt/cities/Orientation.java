@@ -18,7 +18,7 @@ package org.terasology.engine.subsystem.awt.cities;
 
 import java.util.EnumMap;
 
-import org.terasology.math.Vector2i;
+import org.terasology.math.geom.Vector2i;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;

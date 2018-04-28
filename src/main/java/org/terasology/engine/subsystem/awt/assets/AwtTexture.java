@@ -28,65 +28,97 @@ import java.awt.image.WritableRaster;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import org.terasology.asset.AbstractAsset;
-import org.terasology.asset.AssetUri;
+import org.terasology.assets.AssetType;
+import org.terasology.assets.ResourceUrn;
 import org.terasology.math.Border;
-import org.terasology.math.Rect2f;
-import org.terasology.math.Rect2i;
-import org.terasology.math.Vector2i;
+import org.terasology.math.geom.Rect2f;
+import org.terasology.math.geom.Rect2i;
+import org.terasology.math.geom.Vector2i;
 import org.terasology.rendering.assets.texture.Texture;
 import org.terasology.rendering.assets.texture.TextureData;
 import org.terasology.rendering.nui.Color;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
-public class AwtTexture extends AbstractAsset<TextureData> implements Texture {
+public class AwtTexture extends Texture {
 
     private static int idCounter;
 
-    private TextureData textureData;
-    private int id;
+    private final TextureResources resources;
 
-    private Map<BufferedImageCacheKey, BufferedImage> bufferedImageByParametersMap = new HashMap<BufferedImageCacheKey, BufferedImage>();
-    private Map<BufferedImageCacheKey, BufferedImage> cachedBorderedTextures = Maps.newHashMap();
+    public AwtTexture(ResourceUrn urn, AssetType<?, TextureData> assetType, TextureData data) {
+        super(urn, assetType);
+        this.resources = new TextureResources();
+        getDisposalHook().setDisposeAction(resources);
+        reload(data);
+        
 
-    public AwtTexture(AssetUri uri, TextureData textureData) {
-        super(uri);
-        reload(textureData);
+    }
 
-        // TODO: this might need to be synchronized at some point
-        id = idCounter++;
+    public void setId(int id) {
+        resources.id = id;
+    }
+
+    @Override
+    protected void doReload(TextureData data) {
+        resources.id = idCounter++;
+        resources.loadedTextureInfo = new LoadedTextureInfo(data);
+        // TODO: Might need to handle 3d resources differently when data.getType() == TEXTURE3D
+        // see org.terasology.rendering.opengl.OpenGLTexture.doReload(TextureData data)
     }
 
     @Override
     public int getId() {
-        return id;
+        return resources.id;
     }
 
     @Override
-    public void reload(TextureData data) {
-        dispose();
-        this.textureData = data;
+    public int getDepth() {
+        if (resources.loadedTextureInfo != null) {
+            return resources.loadedTextureInfo.getDepth();
+        }
+        return 0;
+    }
+
+    @Override
+    public int getWidth() {
+        if (resources.loadedTextureInfo != null) {
+            return resources.loadedTextureInfo.getWidth();
+        }
+        return 0;
+    }
+
+    @Override
+    public int getHeight() {
+        if (resources.loadedTextureInfo != null) {
+            return resources.loadedTextureInfo.getHeight();
+        }
+        return 0;
+    }
+
+    @Override
+    public Vector2i size() {
+        return new Vector2i(getWidth(), getHeight());
+    }
+
+    @Override
+    public Texture.WrapMode getWrapMode() {
+        return resources.loadedTextureInfo.getWrapMode();
+    }
+
+    @Override
+    public FilterMode getFilterMode() {
+        return resources.loadedTextureInfo.getFilterMode();
     }
 
     @Override
     public TextureData getData() {
-        return textureData;
-    }
-
-    @Override
-    public void dispose() {
-        this.textureData = null;
-        this.bufferedImageByParametersMap = new HashMap<BufferedImageCacheKey, BufferedImage>();
-        this.cachedBorderedTextures = new HashMap<BufferedImageCacheKey, BufferedImage>();
-    }
-
-    @Override
-    public boolean isDisposed() {
-        return textureData == null;
+        return new TextureData(resources.loadedTextureInfo.getTextureData());
     }
 
     @Override
@@ -100,34 +132,90 @@ public class AwtTexture extends AbstractAsset<TextureData> implements Texture {
     }
 
     @Override
-    public int getWidth() {
-        return textureData.getWidth();
+    public Rect2i getPixelRegion() {
+        return Rect2i.createFromMinAndSize(0, 0, getWidth(), getHeight());
     }
 
     @Override
-    public int getHeight() {
-        return textureData.getHeight();
+    public synchronized void subscribeToDisposal(Runnable subscriber) {
+        resources.disposalSubscribers.add(subscriber);
     }
 
     @Override
-    public Vector2i size() {
-        return new Vector2i(getWidth(), getHeight());
+    public synchronized void unsubscribeToDisposal(Runnable subscriber) {
+        resources.disposalSubscribers.remove(subscriber);
     }
 
     @Override
-    public WrapMode getWrapMode() {
-        return textureData.getWrapMode();
+    public boolean isLoaded() {
+        return resources.id != 0;
     }
 
-    @Override
-    public FilterMode getFilterMode() {
-        return textureData.getFilterMode();
+    private static class LoadedTextureInfo {
+        private final TextureData textureData;
+
+         LoadedTextureInfo(TextureData data) {
+            this.textureData = data;
+        }
+
+        public int getWidth() {
+            return textureData.getWidth();
+        }
+
+        public int getHeight() {
+            return textureData.getHeight();
+        }
+
+        public WrapMode getWrapMode() {
+            return textureData.getWrapMode();
+        }
+
+        public FilterMode getFilterMode() {
+            return textureData.getFilterMode();
+        }
+
+        public int getDepth() {
+            return 1;
+        }
+
+        public TextureData getTextureData() {
+            return textureData;
+        }
     }
 
-    public BufferedImage getBufferedImage(int width, int height, float alpha, Color color) {
+    private static class TextureResources implements Runnable {
+
+        private volatile int id;
+        private volatile LoadedTextureInfo loadedTextureInfo;
+
+        private final Map<BufferedImageCacheKey, BufferedImage> bufferedImageByParametersMap = new HashMap<BufferedImageCacheKey, BufferedImage>();
+        private final Map<BufferedImageCacheKey, BufferedImage> cachedBorderedTextures = Maps.newHashMap();
+
+        private final List<Runnable> disposalSubscribers = Lists.newArrayList();
+
+        TextureResources() {
+        }
+
+
+        @Override
+        public void run() {
+            if (loadedTextureInfo != null) {
+                disposalSubscribers.forEach(java.lang.Runnable::run);
+                loadedTextureInfo = null;
+                id = 0;
+                
+                bufferedImageByParametersMap.clear();
+                cachedBorderedTextures.clear();
+
+            }
+        }
+    }
+
+
+    public synchronized BufferedImage getBufferedImage(int width, int height, float alpha, Color color) {
         BufferedImageCacheKey key = new BufferedImageCacheKey(width, height, alpha, color);
 
-        BufferedImage bufferedImage = bufferedImageByParametersMap.get(key);
+        BufferedImage bufferedImage = resources.bufferedImageByParametersMap.get(key);
 
         if (null == bufferedImage) {
             ByteBuffer[] buffers = getData().getBuffers();
@@ -156,15 +244,10 @@ public class AwtTexture extends AbstractAsset<TextureData> implements Texture {
 
             BufferedImage compatibleBufferedImage = createCompatibleImage(bufferedImage);
 
-            bufferedImageByParametersMap.put(key, compatibleBufferedImage);
+            resources.bufferedImageByParametersMap.put(key, compatibleBufferedImage);
         }
 
         return bufferedImage;
-    }
-
-    @Override
-    public Rect2i getPixelRegion() {
-        return Rect2i.createFromMinAndSize(0, 0, getWidth(), getHeight());
     }
 
     /**
@@ -181,7 +264,7 @@ public class AwtTexture extends AbstractAsset<TextureData> implements Texture {
      * We might want to look at this at some point.
      * 
     */
-    private BufferedImage createCompatibleImage(BufferedImage image) {
+    private synchronized BufferedImage createCompatibleImage(BufferedImage image) {
         //  worked for msteiger, just in case what we're doing below breaks it again
         //      BufferedImage bufferedImageArgb = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
 
@@ -199,12 +282,12 @@ public class AwtTexture extends AbstractAsset<TextureData> implements Texture {
         return newImage;
     }
 
-    public BufferedImage getCachedBorderTexture(BufferedImageCacheKey key) {
-        return cachedBorderedTextures.get(key);
+    public synchronized BufferedImage getCachedBorderTexture(BufferedImageCacheKey key) {
+        return resources.cachedBorderedTextures.get(key);
     }
 
-    public BufferedImage putCachedBorderTexture(BufferedImageCacheKey key, BufferedImage bufferedImage) {
-        return cachedBorderedTextures.put(key, bufferedImage);
+    public synchronized BufferedImage putCachedBorderTexture(BufferedImageCacheKey key, BufferedImage bufferedImage) {
+        return resources.cachedBorderedTextures.put(key, bufferedImage);
     }
 
     /**
@@ -262,7 +345,7 @@ public class AwtTexture extends AbstractAsset<TextureData> implements Texture {
         }
     }
 
-    public class IntBufferBackedDataBufferAlphaAndColor extends DataBuffer {
+    public static class IntBufferBackedDataBufferAlphaAndColor extends DataBuffer {
         private final IntBuffer buf;
         private final float red;
         private final float green;
@@ -292,7 +375,7 @@ public class AwtTexture extends AbstractAsset<TextureData> implements Texture {
         }
     }
 
-    public final class IntBufferBackedDataBufferAlphaOnly extends DataBuffer {
+    public static final class IntBufferBackedDataBufferAlphaOnly extends DataBuffer {
         private final IntBuffer buf;
         private final float alpha;
 
@@ -314,7 +397,7 @@ public class AwtTexture extends AbstractAsset<TextureData> implements Texture {
         }
     }
 
-    public final class IntBufferBackedDataBufferUnmodified extends DataBuffer {
+    public static final class IntBufferBackedDataBufferUnmodified extends DataBuffer {
         private final IntBuffer buf;
 
         public IntBufferBackedDataBufferUnmodified(IntBuffer buf) {

@@ -27,20 +27,27 @@ import javax.swing.JFrame;
 
 import org.terasology.config.Config;
 import org.terasology.config.RenderingConfig;
+import org.terasology.context.Context;
 import org.terasology.engine.subsystem.DisplayDevice;
-import org.terasology.registry.CoreRegistry;
+import org.terasology.rendering.nui.layers.mainMenu.videoSettings.DisplayModeSetting;
+import org.terasology.utilities.subscribables.AbstractSubscribable;
 
-public class AwtDisplayDevice implements DisplayDevice {
+public class AwtDisplayDevice extends AbstractSubscribable implements DisplayDevice {
 
     private final JFrame mainFrame;
+    private Context context;
+    
     private boolean isCloseRequested;
 
     private Graphics drawGraphics;
     private int translatedX;
     private int translatedY;
+    
+    private DisplayModeSetting displayModeSetting;
 
-    public AwtDisplayDevice(JFrame window) {
+    public AwtDisplayDevice(JFrame window, Context context) {
         this.mainFrame = window;
+        this.context = context;
 
         mainFrame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 
@@ -54,11 +61,6 @@ public class AwtDisplayDevice implements DisplayDevice {
     }
 
     @Override
-    public boolean isActive() {
-        return mainFrame.isActive();
-    }
-
-    @Override
     public boolean isCloseRequested() {
         return isCloseRequested;
     }
@@ -69,8 +71,9 @@ public class AwtDisplayDevice implements DisplayDevice {
         GraphicsDevice device = env.getDefaultScreenDevice();
         if (state && device.isFullScreenSupported()) {
             device.setFullScreenWindow(mainFrame);
+            this.displayModeSetting = DisplayModeSetting.FULLSCREEN;
         } else {
-            Config config = CoreRegistry.get(Config.class);
+            Config config = context.get(Config.class);
             RenderingConfig rc = config.getRendering();
 
             // proceed in non-full-screen mode
@@ -81,6 +84,7 @@ public class AwtDisplayDevice implements DisplayDevice {
             mainFrame.setLocation(rc.getWindowPosX(), rc.getWindowPosY());
             mainFrame.pack();
             mainFrame.setVisible(true);
+            this.displayModeSetting = DisplayModeSetting.WINDOWED;
         }
     }
 
@@ -91,7 +95,7 @@ public class AwtDisplayDevice implements DisplayDevice {
     @Override
     public boolean isHeadless() {
         // TODO: Needs to be a better way to avoid starting lwjgl systems
-        return true;
+        return false;
     }
 
     @Override
@@ -128,4 +132,28 @@ public class AwtDisplayDevice implements DisplayDevice {
         drawGraphics.dispose();
         drawGraphics = null;
     }
+
+	@Override
+	public boolean isFullscreen() {
+		return displayModeSetting == DisplayModeSetting.FULLSCREEN;
+	}
+
+	@Override
+	public void setDisplayModeSetting(DisplayModeSetting displayModeSetting) {
+		this.displayModeSetting = displayModeSetting;
+	}
+
+	@Override
+	public DisplayModeSetting getDisplayModeSetting() {
+		return displayModeSetting;
+	}
+
+    @Override
+    public void update() {
+    }
+
+	@Override
+	public boolean hasFocus() {
+		return mainFrame.hasFocus();
+	}
 }

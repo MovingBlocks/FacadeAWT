@@ -16,6 +16,7 @@
 package org.terasology.engine.subsystem.awt.renderer;
 
 import org.terasology.awt.world.renderer.BlockTileWorldRenderer;
+import org.terasology.context.Context;
 import org.terasology.engine.subsystem.RenderingSubsystemFactory;
 import org.terasology.logic.players.LocalPlayerSystem;
 import org.terasology.rendering.world.WorldRenderer;
@@ -24,8 +25,8 @@ import org.terasology.world.chunks.ChunkProvider;
 
 public class AwtRenderingSubsystemFactory implements RenderingSubsystemFactory {
 
-    @Override
-    public WorldRenderer createWorldRenderer(WorldProvider worldProvider, ChunkProvider chunkProvider, LocalPlayerSystem localPlayerSystem) {
-        return new BlockTileWorldRenderer(worldProvider, chunkProvider, localPlayerSystem);
-    }
+	@Override
+	public WorldRenderer createWorldRenderer(Context context) {
+        return new BlockTileWorldRenderer(context);
+	}
 }

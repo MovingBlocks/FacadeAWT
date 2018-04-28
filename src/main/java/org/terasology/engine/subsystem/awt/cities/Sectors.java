@@ -19,10 +19,10 @@ package org.terasology.engine.subsystem.awt.cities;
 import java.math.RoundingMode;
 import java.util.Map;
 
-import javax.vecmath.Point2i;
 import javax.vecmath.Vector3f;
 
 import org.terasology.math.TeraMath;
+import org.terasology.math.geom.Vector2i;
 
 import com.google.common.collect.Maps;
 import com.google.common.math.IntMath;
@@ -33,7 +33,7 @@ import com.google.common.math.IntMath;
  */
 public final class Sectors {
 
-    private static final Map<Point2i, Sector> SECTORS = Maps.newConcurrentMap();
+    private static final Map<Vector2i, Sector> SECTORS = Maps.newConcurrentMap();
 
     private Sectors() {
         // private
@@ -45,14 +45,14 @@ public final class Sectors {
      * @return the sector
      */
     public static Sector getSector(int x, int z) {
-        return getSector(new Point2i(x, z));
+        return getSector(new Vector2i(x, z));
     }
 
     /**
      * @param coord the coordinate of the sector
      * @return the sector
      */
-    public static Sector getSector(Point2i coord) {
+    public static Sector getSector(Vector2i coord) {
         Sector sector = SECTORS.get(coord);
 
         if (sector == null) {
@@ -81,6 +81,6 @@ public final class Sectors {
         int sx = IntMath.divide(wx, Sector.SIZE, RoundingMode.FLOOR);
         int sz = IntMath.divide(wz, Sector.SIZE, RoundingMode.FLOOR);
 
-        return getSector(new Point2i(sx, sz));
+        return getSector(new Vector2i(sx, sz));
     }
 }

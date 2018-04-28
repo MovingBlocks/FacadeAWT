@@ -1,30 +1,43 @@
 package org.terasology.awt.world.renderer;
 
+import java.util.Optional;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.terasology.asset.Assets;
+import org.terasology.context.Context;
 import org.terasology.entitySystem.entity.EntityManager;
 import org.terasology.entitySystem.entity.EntityRef;
 import org.terasology.input.MouseInput;
 import org.terasology.logic.selection.ApplyBlockSelectionEvent;
 import org.terasology.math.Region3i;
-import org.terasology.math.Vector2i;
-import org.terasology.math.Vector3i;
-import org.terasology.registry.CoreRegistry;
+import org.terasology.math.geom.Vector2i;
+import org.terasology.math.geom.Vector3i;
 import org.terasology.rendering.assets.texture.Texture;
 import org.terasology.rendering.assets.texture.TextureUtil;
 import org.terasology.rendering.nui.BaseInteractionListener;
 import org.terasology.rendering.nui.Canvas;
 import org.terasology.rendering.nui.Color;
 import org.terasology.rendering.nui.InteractionListener;
+import org.terasology.rendering.nui.events.NUIMouseClickEvent;
+import org.terasology.rendering.nui.events.NUIMouseDragEvent;
+import org.terasology.rendering.nui.events.NUIMouseOverEvent;
+import org.terasology.rendering.nui.events.NUIMouseReleaseEvent;
+import org.terasology.rendering.nui.events.NUIMouseWheelEvent;
 import org.terasology.rendering.nui.layers.hud.CoreHudWidget;
+import org.terasology.utilities.Assets;
 import org.terasology.world.selection.BlockSelectionComponent;
 
 public class WorldSelectionScreen extends CoreHudWidget {
 
     private static final Logger logger = LoggerFactory.getLogger(WorldSelectionScreen.class);
 
-    private BlockTileWorldRenderer renderer;
+    private Context context;
+    
+    public void setContext(Context context) {
+		this.context = context;
+	}
+
+	private BlockTileWorldRenderer renderer;
 
     private EntityRef blockSelectionEntity;
 
@@ -32,7 +45,7 @@ public class WorldSelectionScreen extends CoreHudWidget {
     }
 
     @Override
-    protected void initialise() {
+    public void initialise() {
     }
 
     public void setRenderer(BlockTileWorldRenderer renderer) {
@@ -59,23 +72,31 @@ public class WorldSelectionScreen extends CoreHudWidget {
         boolean isDragging = false;
         
         @Override
-        public void onMouseOver(Vector2i pos, boolean topMostElement) {
+        public void onMouseOver(NUIMouseOverEvent event) {
+        	Vector2i pos = event.getRelativeMousePosition();
             if (true) logger.debug("MouseOver pos=" + pos);
         }
 
         @Override
-        public boolean onMouseClick(MouseInput button, Vector2i mousePosition) {
+        public boolean onMouseClick(NUIMouseClickEvent event) {
+        	MouseInput button = event.getMouseButton();
+        	Vector2i mousePosition = event.getRelativeMousePosition();
             if (MouseInput.MOUSE_LEFT == button) {
                 Vector3i worldPosition = new Vector3i(renderer.getWorldLocation(mousePosition));
 
                 BlockSelectionComponent blockSelectionComponent;
                 if (EntityRef.NULL == blockSelectionEntity) {
-                    EntityManager entityManager = CoreRegistry.get(EntityManager.class);
+                    EntityManager entityManager = context.get(EntityManager.class);
                     blockSelectionComponent = new BlockSelectionComponent();
                     blockSelectionComponent.shouldRender = true;
 
                     Color selectionColor = new Color(100, 100, 150, 100);
-                    blockSelectionComponent.texture = Assets.get(TextureUtil.getTextureUriForColor(selectionColor), Texture.class);
+                    Optional<Texture> textureAsset = Assets.get(TextureUtil.getTextureUriForColor(selectionColor), Texture.class);
+                    if (textureAsset.isPresent()) {
+                        blockSelectionComponent.texture = textureAsset.get();
+                    } else {
+                        blockSelectionComponent.texture = null;
+                    }
 
                     blockSelectionEntity = entityManager.create(blockSelectionComponent);
                     logger.debug("blockSelectionEntity created as  " + blockSelectionEntity + " with " + blockSelectionComponent);
@@ -112,7 +133,8 @@ public class WorldSelectionScreen extends CoreHudWidget {
         }
         
         @Override
-        public void onMouseDrag(Vector2i mousePosition) {
+        public void onMouseDrag(NUIMouseDragEvent event) {
+        	Vector2i mousePosition = event.getRelativeMousePosition();
             isDragging = true;
             
             Vector3i worldPosition = new Vector3i(renderer.getWorldLocation(mousePosition));
@@ -129,7 +151,9 @@ public class WorldSelectionScreen extends CoreHudWidget {
         }
 
         @Override
-        public void onMouseRelease(MouseInput button, Vector2i mousePosition) {
+        public void onMouseRelease(NUIMouseReleaseEvent event) {
+        	Vector2i mousePosition = event.getRelativeMousePosition();
+        	
             if (isDragging) {
                 Vector3i worldPosition = new Vector3i(renderer.getWorldLocation(mousePosition));
 
@@ -152,7 +176,7 @@ public class WorldSelectionScreen extends CoreHudWidget {
         }
 
         @Override
-        public boolean onMouseWheel(int wheelTurns, Vector2i pos) {
+        public boolean onMouseWheel(NUIMouseWheelEvent event) {
             return false;
         }
     };

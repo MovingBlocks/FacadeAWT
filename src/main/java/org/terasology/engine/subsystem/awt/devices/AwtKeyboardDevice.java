@@ -27,7 +27,7 @@ import org.terasology.input.ButtonState;
 import org.terasology.input.InputType;
 import org.terasology.input.Keyboard.Key;
 import org.terasology.input.Keyboard.KeyId;
-import org.terasology.input.device.InputAction;
+import org.terasology.input.device.KeyboardAction;
 import org.terasology.input.device.KeyboardDevice;
 
 import com.google.common.collect.Maps;
@@ -335,7 +335,7 @@ public class AwtKeyboardDevice implements KeyboardDevice {
 
     private JFrame mainWindow;
 
-    private Queue<InputAction> inputQueue = Queues.newArrayDeque();
+    private Queue<KeyboardAction> inputQueue = Queues.newArrayDeque();
     private Object inputQueueLock = new Object();
     private int keyDown;
 
@@ -361,7 +361,7 @@ public class AwtKeyboardDevice implements KeyboardDevice {
             @Override
             public void keyReleased(KeyEvent e) {
                 keyDown = -1;
-                InputAction event = new InputAction(InputType.KEY.getInput(translateVTKeyCodeToTerasologyKeyCode(e)), ButtonState.UP, e.getKeyChar());
+                KeyboardAction event = new KeyboardAction(InputType.KEY.getInput(translateVTKeyCodeToTerasologyKeyCode(e)), ButtonState.UP, e.getKeyChar());
                 synchronized (inputQueueLock) {
                     inputQueue.add(event);
                 }
@@ -379,7 +379,7 @@ public class AwtKeyboardDevice implements KeyboardDevice {
             @Override
             public void keyPressed(KeyEvent e) {
                 keyDown = translateVTKeyCodeToTerasologyKeyCode(e);
-                InputAction event = new InputAction(InputType.KEY.getInput(keyDown), ButtonState.DOWN, e.getKeyChar());
+                KeyboardAction event = new KeyboardAction(InputType.KEY.getInput(keyDown), ButtonState.DOWN, e.getKeyChar());
                 synchronized (inputQueueLock) {
                     inputQueue.add(event);
                 }
@@ -394,8 +394,8 @@ public class AwtKeyboardDevice implements KeyboardDevice {
     }
 
     @Override
-    public Queue<InputAction> getInputQueue() {
-        Queue<InputAction> oldInputQueue;
+    public Queue<KeyboardAction> getInputQueue() {
+        Queue<KeyboardAction> oldInputQueue;
         synchronized (inputQueueLock) {
             oldInputQueue = inputQueue;
             inputQueue = Queues.newArrayDeque();
