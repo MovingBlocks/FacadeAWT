@@ -95,7 +95,7 @@ public class AwtDisplayDevice extends AbstractSubscribable implements DisplayDev
     @Override
     public boolean isHeadless() {
         // TODO: Needs to be a better way to avoid starting lwjgl systems
-        return true;
+        return false;
     }
 
     @Override
