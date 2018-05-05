@@ -47,6 +47,7 @@ import org.terasology.math.geom.Vector2f;
 import org.terasology.math.geom.Vector2i;
 import org.terasology.math.geom.Vector3f;
 import org.terasology.naming.Name;
+import org.terasology.registry.CoreRegistry;
 import org.terasology.rendering.assets.font.Font;
 import org.terasology.rendering.assets.material.Material;
 import org.terasology.rendering.assets.mesh.Mesh;
@@ -65,6 +66,7 @@ import org.terasology.world.block.BlockManager;
 import org.terasology.world.block.BlockPart;
 import org.terasology.world.block.BlockUri;
 import org.terasology.world.block.family.BlockFamily;
+import org.terasology.world.block.family.BlockFamilyFactoryRegistry;
 import org.terasology.world.block.tiles.WorldAtlas;
 
 /**
@@ -106,10 +108,14 @@ public class AwtCanvasRenderer implements CanvasRenderer {
         Vector2f textureAtlasPos;
 
         BlockManager blockManager = context.get(BlockManager.class);
-        ResourceUrn meshUrn = mesh.getUrn();
-        BlockUri blockUri = new BlockUri(meshUrn);
+        if (null == blockManager) {
+            blockManager = CoreRegistry.get(BlockManager.class);
+        }
+        ResourceUrn meshUrn = mesh.getUrn(); // engine:blockmesh#core:Torch.TOP
+        Name blockFragmentNameConvert = meshUrn.getFragmentName(); // core:Torch.TOP
+        BlockUri blockUri = new BlockUri(blockFragmentNameConvert.toLowerCase());
+        Name blockFragmentName = blockUri.getIdentifier();
 
-        Name blockFragmentName = meshUrn.getFragmentName();
 		if (!blockFragmentName.isEmpty()) {
             BlockFamily blockFamily = blockManager.getBlockFamily(blockUri); // mesh:Core:Torch.TOP
             Block archetypeBlock = blockFamily.getArchetypeBlock();
@@ -129,6 +135,9 @@ public class AwtCanvasRenderer implements CanvasRenderer {
         }
 
         WorldAtlas worldAtlas = context.get(WorldAtlas.class);
+        if (null == worldAtlas) {
+            worldAtlas = CoreRegistry.get(WorldAtlas.class);
+        }
         float tileSize = worldAtlas.getRelativeTileSize();
 
         float ux = 0f;
