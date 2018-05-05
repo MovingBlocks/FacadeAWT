@@ -60,6 +60,7 @@ import org.terasology.rendering.assets.texture.BasicTextureRegion;
 import org.terasology.rendering.assets.texture.Texture;
 import org.terasology.rendering.assets.texture.TextureRegion;
 import org.terasology.rendering.cameras.Camera;
+import org.terasology.rendering.dag.RenderGraph;
 import org.terasology.rendering.nui.NUIManager;
 import org.terasology.rendering.nui.layers.hud.HUDScreenLayer;
 import org.terasology.utilities.Assets;
@@ -145,7 +146,6 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
 		WorldSelectionScreen worldSelectionScreen = hud
                 .addHUDElement("engine:worldSelectionScreen", WorldSelectionScreen.class, Rect2f.createFromMinAndSize(0, 0, 1, 1));
         
-		// TODO: World selection screen won't load yet.
 		if (null != worldSelectionScreen) {
 			worldSelectionScreen.setRenderer(this);
 	        worldSelectionScreen.setContext(context);
@@ -773,5 +773,11 @@ public class BlockTileWorldRenderer extends AbstractWorldRenderer {
 	public void requestTaskListRefresh() {
 		// TODO Auto-generated method stub
 		
+	}
+
+	@Override
+	public RenderGraph getRenderGraph() {
+		// TODO Auto-generated method stub
+		return null;
 	}
 }
